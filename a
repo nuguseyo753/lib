@@ -81,7 +81,7 @@
 
     local themes = {
         preset = {
-            accent = rgb(96, 255, 181),
+            accent = rgb(245, 245, 245),
         }, 
 
         utility = {
@@ -1694,13 +1694,12 @@
                     library:tween(items[ "circle" ], {BackgroundColor3 = bool and rgb(255, 255, 255) or rgb(86, 86, 86), Position = bool and dim2(1, -14, 0, 2) or dim2(0, 2, 0, 2)}, Enum.EasingStyle.Quad)
                 end
 
+                flags[cfg.flag] = bool
                 cfg.callback(bool)
 
                 if cfg.folding then 
                     elements.Visible = bool
                 end
-
-                flags[cfg.flag] = bool
             end 
             
             items[ "toggle" ].MouseButton1Click:Connect(function()
@@ -1963,7 +1962,7 @@
                 name = options.name or nil;
                 info = options.info or nil;
                 flag = options.flag or library:next_flag();
-                options = options.items or {""};
+                options = options.items or options.options or {""};
                 callback = options.callback or function() end;
                 multi = options.multi or false;
                 scrolling = options.scrolling or false;
@@ -1980,7 +1979,7 @@
                 seperator = options.seperator or options.Seperator or true;
             }   
 
-            cfg.default = options.default or (cfg.multi and {cfg.items[1]}) or cfg.items[1] or "None"
+            cfg.default = options.default or (cfg.multi and {cfg.options[1]}) or cfg.options[1] or "None"
             flags[cfg.flag] = cfg.default
 
             local items = cfg.items; do 
@@ -2429,7 +2428,7 @@
                         Size = dim2(0, 16, 0, 16);
                         BorderSizePixel = 0;
                         TextSize = 14;
-                        BackgroundColor3 = rgb(96, 255, 181)
+                        BackgroundColor3 = cfg.color
                     });
                     
                     library:create( "UICorner" , {
@@ -2445,7 +2444,7 @@
                         BorderColor3 = rgb(0, 0, 0);
                         Position = dim2(0, 1, 0, 1);
                         BorderSizePixel = 0;
-                        BackgroundColor3 = rgb(96, 255, 181)
+                        BackgroundColor3 = cfg.color
                     });
                     
                     library:create( "UICorner" , {
@@ -3257,8 +3256,6 @@
                     cfg.set_mode(cfg.mode) 
                 end 
 
-                cfg.callback(cfg.active)
-
                 local text = tostring(cfg.key) ~= "Enums" and (keys[cfg.key] or tostring(cfg.key):gsub("Enum.", "")) or nil
                 local __text = text and (tostring(text):gsub("KeyCode.", ""):gsub("UserInputType.", ""))
                 
@@ -3269,6 +3266,8 @@
                     key = cfg.key, 
                     active = cfg.active
                 }
+
+                cfg.callback(cfg.active)
             end
 
             function cfg.set_visible(bool)
@@ -4014,24 +4013,23 @@
                 end
             end
 
-            local function get_skeleton_rod(index)
+            local function get_skeleton_line(index)
                 if cfg.skeleton_rods[index] then
                     return cfg.skeleton_rods[index]
                 end
 
-                local rod = Instance.new("Part")
-                rod.Name = "\0"
-                rod.Anchored = true
-                rod.CanCollide = false
-                rod.CastShadow = false
-                rod.Material = Enum.Material.Neon
-                rod.Shape = Enum.PartType.Cylinder
-                rod.Size = vec3(0.045, 0.045, 1)
-                rod.Transparency = 1
-                rod.Parent = items["world"]
-                cfg.skeleton_rods[index] = rod
+                local line = library:create("Frame", {
+                    Parent = items["viewport"];
+                    Name = "\0";
+                    AnchorPoint = vec2(0.5, 0.5);
+                    BorderSizePixel = 0;
+                    BackgroundColor3 = themes.preset.accent;
+                    Visible = false;
+                    ZIndex = 20;
+                })
 
-                return rod
+                cfg.skeleton_rods[index] = line
+                return line
             end
 
             local function get_head_dot()
@@ -4039,56 +4037,76 @@
                     return cfg.head_dot
                 end
 
-                local dot = Instance.new("Part")
-                dot.Name = "\0"
-                dot.Anchored = true
-                dot.CanCollide = false
-                dot.CastShadow = false
-                dot.Material = Enum.Material.Neon
-                dot.Shape = Enum.PartType.Ball
-                dot.Size = vec3(0.16, 0.16, 0.16)
-                dot.Transparency = 1
-                dot.Parent = items["world"]
-                cfg.head_dot = dot
+                local dot = library:create("Frame", {
+                    Parent = items["viewport"];
+                    Name = "\0";
+                    AnchorPoint = vec2(0.5, 0.5);
+                    Size = dim_offset(8, 8);
+                    BorderSizePixel = 0;
+                    BackgroundColor3 = themes.preset.accent;
+                    Visible = false;
+                    ZIndex = 21;
+                })
 
+                library:create("UICorner", {
+                    Parent = dot;
+                    CornerRadius = dim(0, 999);
+                })
+
+                cfg.head_dot = dot
                 return dot
+            end
+
+            local function project_part(part)
+                if not part then
+                    return nil, false
+                end
+
+                local point, visible = items["camera"]:WorldToViewportPoint(part.Position)
+                if not visible then
+                    return nil, false
+                end
+
+                return vec2(point.X, point.Y), true
             end
 
             local function update_head_dot(accent, visible)
                 local dot = get_head_dot()
                 local head = get_body_part({"Head"})
+                local point, on_screen = project_part(head)
 
-                if visible and head then
-                    dot.Color = accent
-                    dot.CFrame = cfr(head.Position + vec3(0, 0.05, 0))
-                    dot.Transparency = 0
+                if visible and point and on_screen then
+                    dot.BackgroundColor3 = accent
+                    dot.Position = dim_offset(point.X, point.Y)
+                    dot.Visible = true
                 else
-                    dot.Transparency = 1
+                    dot.Visible = false
                 end
             end
 
             local function update_skeleton(accent, visible)
                 for index, segment in skeleton_segments do
-                    local rod = get_skeleton_rod(index)
+                    local line = get_skeleton_line(index)
                     local from = get_body_part(segment[1])
                     local to = get_body_part(segment[2])
+                    local from_point, from_visible = project_part(from)
+                    local to_point, to_visible = project_part(to)
 
-                    if visible and from and to then
-                        local from_pos = from.Position
-                        local to_pos = to.Position
-                        local distance = (to_pos - from_pos).Magnitude
-                        local midpoint = from_pos:Lerp(to_pos, 0.5)
+                    if visible and from_point and to_point and from_visible and to_visible then
+                        local delta = to_point - from_point
+                        local length = delta.Magnitude
 
-                        if distance > 0.04 then
-                            rod.Color = accent
-                            rod.Size = vec3(0.045, distance, 0.045)
-                            rod.CFrame = CFrame.lookAt(midpoint, to_pos) * angle(rad(90), 0, 0)
-                            rod.Transparency = 0.08
+                        if length > 2 then
+                            line.BackgroundColor3 = accent
+                            line.Position = dim_offset((from_point.X + to_point.X) / 2, (from_point.Y + to_point.Y) / 2)
+                            line.Size = dim_offset(length, 2)
+                            line.Rotation = math.deg(math.atan(delta.Y, delta.X))
+                            line.Visible = true
                         else
-                            rod.Transparency = 1
+                            line.Visible = false
                         end
                     else
-                        rod.Transparency = 1
+                        line.Visible = false
                     end
                 end
             end
@@ -4320,8 +4338,8 @@
 
                 if typeof(color_flag) == "Color3" then
                     accent = color_flag
-                elseif type(color_flag) == "table" and typeof(color_flag[1]) == "Color3" then
-                    accent = color_flag[1]
+                elseif type(color_flag) == "table" and typeof(color_flag.Color) == "Color3" then
+                    accent = color_flag.Color
                 end
 
                 items["box"].Visible = box
