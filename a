@@ -81,7 +81,7 @@
 
     local themes = {
         preset = {
-            accent = rgb(245, 245, 245),
+            accent = rgb(255, 70, 70),
         }, 
 
         utility = {
@@ -3618,7 +3618,7 @@
             section:button({name = "Load", callback = function() library:load_config(readfile(library.directory .. "/configs/" .. flags["config_name_list"] .. ".cfg"))  library:update_config_list() notifications:create_notification({name = "Configs", info = "Loaded config:\n" .. flags["config_name_list"]}) end})
             section:button({name = "Delete", callback = function() delfile(library.directory .. "/configs/" .. flags["config_name_list"] .. ".cfg")  library:update_config_list() notifications:create_notification({name = "Configs", info = "Deleted config:\n" .. flags["config_name_list"]}) end})
             section:colorpicker({name = "Menu Accent", callback = function(color, alpha) library:update_theme("accent", color) end, color = themes.preset.accent})
-            section:keybind({name = "Menu Bind", callback = function(bool) window.toggle_menu(bool) end, default = true})
+            section:keybind({name = "Menu Bind", key = Enum.KeyCode.Insert, callback = function(bool) window.toggle_menu(bool) end, default = true})
         end
     --
 
@@ -4019,13 +4019,13 @@
                 end
 
                 local line = library:create("Frame", {
-                    Parent = items["viewport"];
+                    Parent = items["stage"];
                     Name = "\0";
                     AnchorPoint = vec2(0.5, 0.5);
                     BorderSizePixel = 0;
                     BackgroundColor3 = themes.preset.accent;
                     Visible = false;
-                    ZIndex = 20;
+                    ZIndex = 30;
                 })
 
                 cfg.skeleton_rods[index] = line
@@ -4037,15 +4037,31 @@
                     return cfg.head_dot
                 end
 
-                local dot = library:create("Frame", {
-                    Parent = items["viewport"];
+                local outline = library:create("Frame", {
+                    Parent = items["stage"];
                     Name = "\0";
                     AnchorPoint = vec2(0.5, 0.5);
-                    Size = dim_offset(8, 8);
+                    Size = dim_offset(11, 11);
+                    BorderSizePixel = 0;
+                    BackgroundColor3 = rgb(0, 0, 0);
+                    Visible = false;
+                    ZIndex = 31;
+                })
+
+                library:create("UICorner", {
+                    Parent = outline;
+                    CornerRadius = dim(0, 999);
+                })
+
+                local dot = library:create("Frame", {
+                    Parent = items["stage"];
+                    Name = "\0";
+                    AnchorPoint = vec2(0.5, 0.5);
+                    Size = dim_offset(7, 7);
                     BorderSizePixel = 0;
                     BackgroundColor3 = themes.preset.accent;
                     Visible = false;
-                    ZIndex = 21;
+                    ZIndex = 32;
                 })
 
                 library:create("UICorner", {
@@ -4053,6 +4069,7 @@
                     CornerRadius = dim(0, 999);
                 })
 
+                cfg.head_dot_outline = outline
                 cfg.head_dot = dot
                 return dot
             end
@@ -4062,24 +4079,53 @@
                     return nil, false
                 end
 
-                local point, visible = items["camera"]:WorldToViewportPoint(part.Position)
-                if not visible then
+                local viewport_size = items["viewport"].AbsoluteSize
+                if viewport_size.X <= 0 or viewport_size.Y <= 0 then
                     return nil, false
                 end
 
-                return vec2(point.X, point.Y), true
+                local object_space = items["camera"].CFrame:PointToObjectSpace(part.Position)
+                local depth = -object_space.Z
+                if depth <= 0 then
+                    return nil, false
+                end
+
+                local fov = rad(items["camera"].FieldOfView)
+                local focal = viewport_size.Y / (2 * math.tan(fov / 2))
+                local x = viewport_size.X / 2 + (object_space.X / depth) * focal
+                local y = viewport_size.Y / 2 - (object_space.Y / depth) * focal
+
+                if x < -20 or x > viewport_size.X + 20 or y < -20 or y > viewport_size.Y + 20 then
+                    return nil, false
+                end
+
+                return vec2(x, y), true
+            end
+
+            local function viewport_to_stage(point)
+                local offset = items["viewport"].AbsolutePosition - items["stage"].AbsolutePosition
+                return point + vec2(offset.X, offset.Y)
             end
 
             local function update_head_dot(accent, visible)
                 local dot = get_head_dot()
+                local outline = cfg.head_dot_outline
                 local head = get_body_part({"Head"})
                 local point, on_screen = project_part(head)
 
                 if visible and point and on_screen then
+                    point = viewport_to_stage(point)
+                    if outline then
+                        outline.Position = dim_offset(point.X, point.Y)
+                        outline.Visible = true
+                    end
                     dot.BackgroundColor3 = accent
                     dot.Position = dim_offset(point.X, point.Y)
                     dot.Visible = true
                 else
+                    if outline then
+                        outline.Visible = false
+                    end
                     dot.Visible = false
                 end
             end
@@ -4093,6 +4139,8 @@
                     local to_point, to_visible = project_part(to)
 
                     if visible and from_point and to_point and from_visible and to_visible then
+                        from_point = viewport_to_stage(from_point)
+                        to_point = viewport_to_stage(to_point)
                         local delta = to_point - from_point
                         local length = delta.Magnitude
 
