@@ -81,7 +81,7 @@
 
     local themes = {
         preset = {
-            accent = rgb(166, 147, 243),
+            accent = rgb(245, 245, 245),
         }, 
 
         utility = {
@@ -539,7 +539,7 @@
                 });
                 
                 library:create( "UIStroke" , {
-                    Color = rgb(41, 38, 58);
+                    Color = rgb(48, 48, 48);
                     Parent = items[ "main" ];
                     ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 });
@@ -549,7 +549,7 @@
                     BackgroundTransparency = 1;
                     Name = "\0";
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(0, 196, 1, -25);
+                    Size = dim2(0, 128, 1, -25);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(14, 14, 16)
                 });
@@ -568,25 +568,25 @@
                     Parent = items[ "side_frame" ];
                     Name = "\0";
                     BackgroundTransparency = 1;
-                    Position = dim2(0, 0, 0, 60);
+                    Position = dim2(0, 0, 0, 4);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, 0, 1, -60);
+                    Size = dim2(1, 0, 1, -4);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(255, 255, 255)
                 }); cfg.button_holder = items[ "button_holder" ];
                 
                 library:create( "UIListLayout" , {
                     Parent = items[ "button_holder" ];
-                    Padding = dim(0, 5);
+                    Padding = dim(0, 4);
                     SortOrder = Enum.SortOrder.LayoutOrder
                 });
                 
                 library:create( "UIPadding" , {
-                    PaddingTop = dim(0, 16);
-                    PaddingBottom = dim(0, 36);
+                    PaddingTop = dim(0, 4);
+                    PaddingBottom = dim(0, 16);
                     Parent = items[ "button_holder" ];
-                    PaddingRight = dim(0, 11);
-                    PaddingLeft = dim(0, 10)
+                    PaddingRight = dim(0, 8);
+                    PaddingLeft = dim(0, 6)
                 });
 
                 local accent = themes.preset.accent
@@ -598,11 +598,12 @@
                     Name = "\0";
                     Text = string.format('<u>%s</u><font color = "rgb(255, 255, 255)">%s</font>', cfg.name, cfg.suffix);
                     BackgroundTransparency = 1;
-                    Size = dim2(1, 0, 0, 70);
+                    Visible = false;
+                    Size = dim2(1, 0, 0, 0);
                     TextColor3 = themes.preset.accent;
                     BorderSizePixel = 0;
                     RichText = true;
-                    TextSize = 30;
+                    TextSize = 18;
                     BackgroundColor3 = rgb(255, 255, 255)
                 }); library:apply_theme(items[ "title" ], "accent", "TextColor3");
                 
@@ -610,9 +611,9 @@
                     Parent = items[ "main" ];
                     Name = "\0";
                     BackgroundTransparency = 1;
-                    Position = dim2(0, 196, 0, 0);
+                    Position = dim2(0, 128, 0, 0);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, -196, 0, 56);
+                    Size = dim2(1, -128, 0, 56);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(255, 255, 255)
                 }); cfg.multi_holder = items[ "multi_holder" ];
@@ -649,9 +650,9 @@
                     Parent = items[ "main" ];
                     Name = "\0";
                     BackgroundTransparency = 1;
-                    Position = dim2(0, 196, 0, 56);
+                    Position = dim2(0, 128, 0, 56);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, -196, 1, -81);
+                    Size = dim2(1, -128, 1, -81);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(14, 14, 16);
                     ZIndex = 2;
@@ -765,9 +766,9 @@
                     Name = "\0";
                     Visible = false;
                     BackgroundTransparency = 1;
-                    Position = dim2(0, 196, 0, 56);
+                    Position = dim2(0, 128, 0, 56);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, -216, 1, -101);
+                    Size = dim2(1, -148, 1, -101);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(255, 255, 255)
                 });
@@ -782,10 +783,10 @@
                         AutoButtonColor = false;
                         BackgroundTransparency = 1;
                         Name = "\0";
-                        Size = dim2(1, 0, 0, 35);
+                        Size = dim2(1, 0, 0, 32);
                         BorderSizePixel = 0;
-                        TextSize = 16;
-                        BackgroundColor3 = rgb(29, 29, 29)
+                        TextSize = 14;
+                        BackgroundColor3 = rgb(22, 22, 22)
                     });
                     
                     items[ "icon" ] = library:create( "ImageLabel" , {
@@ -795,6 +796,7 @@
                         AnchorPoint = vec2(0, 0.5);
                         Image = "http://www.roblox.com/asset/?id=6034767608";
                         BackgroundTransparency = 1;
+                        Visible = false;
                         Position = dim2(0, 10, 0.5, 0);
                         Name = "\0";
                         Size = dim2(0, 22, 0, 22);
@@ -810,12 +812,12 @@
                         Parent = items[ "button" ];
                         Name = "\0";
                         Size = dim2(0, 0, 1, 0);
-                        Position = dim2(0, 40, 0, 0);
+                        Position = dim2(0, 8, 0, 0);
                         BackgroundTransparency = 1;
                         TextXAlignment = Enum.TextXAlignment.Left;
                         BorderSizePixel = 0;
                         AutomaticSize = Enum.AutomaticSize.X;
-                        TextSize = 16;
+                        TextSize = 12;
                         BackgroundColor3 = rgb(255, 255, 255)
                     });
                     
@@ -829,9 +831,25 @@
                         Parent = items[ "button" ];
                         CornerRadius = dim(0, 7)
                     });
+
+                    items[ "active_line" ] = library:create( "Frame" , {
+                        Parent = items[ "button" ];
+                        Name = "\0";
+                        AnchorPoint = vec2(0, 0.5);
+                        Position = dim2(0, 0, 0.5, 0);
+                        Size = dim2(0, 2, 1, -10);
+                        BorderSizePixel = 0;
+                        BackgroundTransparency = 1;
+                        BackgroundColor3 = themes.preset.accent;
+                    }); library:apply_theme(items[ "active_line" ], "accent", "BackgroundColor3");
+
+                    library:create( "UICorner" , {
+                        Parent = items[ "active_line" ];
+                        CornerRadius = dim(0, 999)
+                    });
                     
                     library:create( "UIStroke" , {
-                        Color = rgb(41, 38, 58);
+                        Color = rgb(48, 48, 48);
                         Parent = items[ "button" ];
                         Enabled = false;
                         ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -884,7 +902,7 @@
                                     BorderSizePixel = 0;
                                     AutomaticSize = Enum.AutomaticSize.X;
                                     TextSize = 16;
-                                    BackgroundColor3 = rgb(29, 28, 40)
+                                    BackgroundColor3 = rgb(22, 22, 22)
                                 });
                                 
                                 multi_items[ "name" ] = library:create( "TextLabel" , {
@@ -1031,12 +1049,15 @@
                         self.items[ "global_fade" ].BackgroundTransparency = 0
                         
                         library:tween(self.items[ "global_fade" ], {BackgroundTransparency = 1}, Enum.EasingStyle.Quad, 0.4)
-                        selected_tab[ 4 ].Size = dim2(1, -216, 1, -101)
+                        selected_tab[ 4 ].Size = dim2(1, -148, 1, -101)
                     end
 
                     library:tween(selected_tab[ 1 ], {BackgroundTransparency = 1})
-                    library:tween(selected_tab[ 2 ], {ImageColor3 = rgb(72, 72, 73)})
-                    library:tween(selected_tab[ 3 ], {TextColor3 = rgb(72, 72, 73)})
+                    library:tween(selected_tab[ 2 ], {ImageColor3 = rgb(120, 120, 120)})
+                    library:tween(selected_tab[ 3 ], {TextColor3 = rgb(130, 130, 130)})
+                    if selected_tab[ 6 ] then
+                        library:tween(selected_tab[ 6 ], {BackgroundTransparency = 1})
+                    end
 
                     selected_tab[ 4 ].Visible = false
                     selected_tab[ 4 ].Parent = library[ "cache" ]
@@ -1044,10 +1065,11 @@
                     selected_tab[ 5 ].Parent = library[ "cache" ]
                 end
 
-                library:tween(items[ "button" ], {BackgroundTransparency = 0})
-                library:tween(items[ "icon" ], {ImageColor3 = themes.preset.accent})
+                library:tween(items[ "button" ], {BackgroundTransparency = 0.15})
+                library:tween(items[ "icon" ], {ImageColor3 = rgb(255, 255, 255)})
                 library:tween(items[ "name" ], {TextColor3 = rgb(255, 255, 255)})
-                library:tween(items[ "tab_holder" ], {Size = dim2(1, -196, 1, -81)}, Enum.EasingStyle.Quad, 0.4)
+                library:tween(items[ "active_line" ], {BackgroundTransparency = 0})
+                library:tween(items[ "tab_holder" ], {Size = dim2(1, -128, 1, -81)}, Enum.EasingStyle.Quad, 0.4)
                 
                 items[ "tab_holder" ].Visible = true 
                 items[ "tab_holder" ].Parent = self.items[ "main" ]
@@ -1060,10 +1082,18 @@
                     items[ "name" ];
                     items[ "tab_holder" ];
                     items[ "multi_section_button_holder" ];
+                    items[ "active_line" ];
                 }
 
-                if library.esp_preview_window and library.esp_preview_window.set_visible then
-                    library.esp_preview_window.set_visible(string.find(string.lower(cfg.name), "visual") ~= nil)
+                library.current_tab_name = cfg.name
+
+                if library.esp_preview_window then
+                    local is_visuals_tab = string.find(string.lower(cfg.name), "visual") ~= nil
+                    if library.esp_preview_window.set_tab_visible then
+                        library.esp_preview_window.set_tab_visible(is_visuals_tab)
+                    elseif library.esp_preview_window.set_visible then
+                        library.esp_preview_window.set_visible(is_visuals_tab)
+                    end
                 end
 
                 library:close_element()
@@ -1190,7 +1220,7 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(0, 0, cfg.size, -3);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(29, 28, 40)
+                    BackgroundColor3 = rgb(22, 22, 22)
                 });
 
                 library:create( "UICorner" , {
@@ -1205,7 +1235,7 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, -2, 1, -2);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(25, 25, 35)
+                    BackgroundColor3 = rgb(20, 20, 20)
                 });
                 
                 library:create( "UICorner" , {
@@ -1268,7 +1298,7 @@
                 });
                 
                 library:create( "UIStroke" , {
-                    Color = rgb(41, 38, 58);
+                    Color = rgb(48, 48, 48);
                     Parent = items[ "button" ];
                     Enabled = false;
                     ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -1317,7 +1347,7 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, 0, 0, 1);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(47, 44, 62)
+                    BackgroundColor3 = rgb(56, 56, 56)
                 });
                 
                 if cfg.fading_toggle then 
@@ -1545,7 +1575,7 @@
                             BorderColor3 = rgb(0, 0, 0);
                             Position = dim2(0, 1, 0, 1);
                             BorderSizePixel = 0;
-                            BackgroundColor3 = rgb(25, 25, 35)
+                            BackgroundColor3 = rgb(20, 20, 20)
                         }); library:apply_theme(items[ "outline" ], "accent", "BackgroundColor3");
                         
                         items[ "tick" ] = library:create( "ImageLabel" , {
@@ -1636,7 +1666,7 @@
                 if cfg.type == "checkbox" then 
                     library:tween(items[ "tick" ], {Rotation = bool and 0 or 45, ImageTransparency = bool and 0 or 1})
                     library:tween(items[ "toggle_button" ], {BackgroundColor3 = bool and themes.preset.accent or rgb(67, 67, 68)})
-                    library:tween(items[ "outline" ], {BackgroundColor3 = bool and themes.preset.accent or rgb(25, 25, 35)})
+                    library:tween(items[ "outline" ], {BackgroundColor3 = bool and themes.preset.accent or rgb(20, 20, 20)})
                 else
                     library:tween(items[ "toggle_button" ], {BackgroundColor3 = bool and themes.preset.accent or rgb(58, 58, 62)}, Enum.EasingStyle.Quad)
                     library:tween(items[ "inline" ], {BackgroundColor3 = bool and themes.preset.accent or rgb(50, 50, 50)}, Enum.EasingStyle.Quad)
@@ -1670,7 +1700,7 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, 1, 0, 1);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(47, 44, 62)
+                    BackgroundColor3 = rgb(56, 56, 56)
                 });
             end
 
@@ -1897,7 +1927,7 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, 1, 0, 1);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(47, 44, 62)
+                    BackgroundColor3 = rgb(56, 56, 56)
                 });
             end 
 
@@ -2219,7 +2249,7 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, 1, 0, 1);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(47, 44, 62)
+                    BackgroundColor3 = rgb(56, 56, 56)
                 });
             end 
 
@@ -2327,7 +2357,7 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, 1, 0, 1);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(47, 44, 62)
+                    BackgroundColor3 = rgb(56, 56, 56)
                 });
             end 
 
@@ -2417,7 +2447,7 @@
                         Size = dim2(0, 166, 0, 197);
                         BorderSizePixel = 0;
                         Visible = true;
-                        BackgroundColor3 = rgb(29, 28, 40)
+                        BackgroundColor3 = rgb(22, 22, 22)
                     });
 
                     items[ "colorpicker_fade" ] = library:create( "Frame" , {
@@ -2429,7 +2459,7 @@
                         Size = dim2(1, 0, 1, 0);
                         BorderSizePixel = 0;
                         ZIndex = 100;
-                        BackgroundColor3 = rgb(29, 28, 40)
+                        BackgroundColor3 = rgb(22, 22, 22)
                     });
                     
                     items[ "colorpicker_components" ] = library:create( "Frame" , {
@@ -2439,7 +2469,7 @@
                         BorderColor3 = rgb(0, 0, 0);
                         Size = dim2(1, -2, 1, -2);
                         BorderSizePixel = 0;
-                        BackgroundColor3 = rgb(25, 25, 35)
+                        BackgroundColor3 = rgb(20, 20, 20)
                     });
                     
                     library:create( "UICorner" , {
@@ -2584,7 +2614,7 @@
                         BorderColor3 = rgb(0, 0, 0);
                         Size = dim2(1, -20, 0, 8);
                         BorderSizePixel = 0;
-                        BackgroundColor3 = rgb(29, 28, 40);
+                        BackgroundColor3 = rgb(22, 22, 22);
                         AutoButtonColor = false;
                         Text = "";
                     });
@@ -3091,7 +3121,7 @@
                         ClipsDescendants = true;
                         BorderColor3 = rgb(0, 0, 0);
                         BorderSizePixel = 0;
-                        BackgroundColor3 = rgb(25, 25, 35)
+                        BackgroundColor3 = rgb(20, 20, 20)
                     });
                     
                     library:create( "UIPadding" , {
@@ -3363,7 +3393,7 @@
                     ClipsDescendants = true;
                     BorderSizePixel = 0;
                     AutomaticSize = Enum.AutomaticSize.Y;
-                    BackgroundColor3 = rgb(29, 28, 40)
+                    BackgroundColor3 = rgb(22, 22, 22)
                 });
                 
                 items[ "inline" ] = library:create( "Frame" , {
@@ -3373,7 +3403,7 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, -2, 1, -2);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(25, 25, 35)
+                    BackgroundColor3 = rgb(20, 20, 20)
                 });
                 
                 library:create( "UICorner" , {
@@ -3630,7 +3660,7 @@
                 });
                 
                 library:create( "UIStroke" , {
-                    Color = rgb(41, 38, 58);
+                    Color = rgb(48, 48, 48);
                     Parent = items[ "notification" ];
                     Transparency = 1;
                     ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -3737,10 +3767,12 @@
             local cfg = {
                 name = properties.name or properties.Name or "Bacon Preview",
                 player = properties.player or properties.Player or "bacon_target",
-                position = properties.position or properties.Position or dim2(1, -390, 0, 96),
-                size = properties.size or properties.Size or dim_offset(350, 455),
+                position = properties.position or properties.Position or dim2(1, -430, 0, 86),
+                size = properties.size or properties.Size or dim_offset(390, 500),
                 visible = properties.visible == true,
                 health = properties.health or properties.Health or 76,
+                enabled = properties.visible == true,
+                tab_visible = string.find(string.lower(library.current_tab_name or ""), "visual") ~= nil,
                 items = {},
             }
 
@@ -3749,12 +3781,12 @@
             items["main"] = library:create("Frame", {
                 Parent = library.items;
                 Name = "\0";
-                Visible = cfg.visible;
+                Visible = false;
                 AnchorPoint = vec2(0, 0);
                 Position = cfg.position;
                 Size = cfg.size;
                 BorderSizePixel = 0;
-                BackgroundColor3 = rgb(17, 18, 24);
+                BackgroundColor3 = rgb(12, 12, 12);
             })
 
             library:create("UICorner", {
@@ -3765,7 +3797,7 @@
             library:create("UIStroke", {
                 Parent = items["main"];
                 ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
-                Color = rgb(38, 38, 45);
+                Color = rgb(52, 52, 52);
             })
 
             items["header"] = library:create("Frame", {
@@ -3773,7 +3805,7 @@
                 Name = "\0";
                 Size = dim2(1, 0, 0, 48);
                 BorderSizePixel = 0;
-                BackgroundColor3 = rgb(25, 25, 35);
+                BackgroundColor3 = rgb(18, 18, 18);
             })
 
             library:create("UICorner", {
@@ -3799,9 +3831,9 @@
                 Parent = items["main"];
                 Name = "\0";
                 Position = dim_offset(16, 64);
-                Size = dim2(1, -32, 0, 320);
+                Size = dim2(1, -32, 0, 370);
                 BorderSizePixel = 0;
-                BackgroundColor3 = rgb(9, 10, 15);
+                BackgroundColor3 = rgb(6, 6, 6);
             })
 
             library:create("UICorner", {
@@ -3812,7 +3844,7 @@
             library:create("UIStroke", {
                 Parent = items["stage"];
                 ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
-                Color = rgb(35, 35, 42);
+                Color = rgb(42, 42, 42);
             })
 
             items["name"] = library:create("TextLabel", {
@@ -3847,8 +3879,8 @@
                 Parent = items["stage"];
                 Name = "\0";
                 BackgroundTransparency = 1;
-                Position = dim2(0.5, -64, 0, 48);
-                Size = dim_offset(128, 214);
+                Position = dim2(0.5, -78, 0, 54);
+                Size = dim_offset(156, 268);
                 BorderSizePixel = 0;
             })
 
@@ -3861,8 +3893,8 @@
             items["health_back"] = library:create("Frame", {
                 Parent = items["stage"];
                 Name = "\0";
-                Position = dim2(0.5, -82, 0, 48);
-                Size = dim_offset(6, 214);
+                Position = dim2(0.5, -100, 0, 54);
+                Size = dim_offset(6, 268);
                 BorderSizePixel = 0;
                 BackgroundColor3 = rgb(25, 25, 25);
             })
@@ -3897,45 +3929,101 @@
                 BackgroundColor3 = themes.preset.accent;
             }); library:apply_theme(items["tracer"], "accent", "BackgroundColor3")
 
-            items["character"] = library:create("Frame", {
+            items["viewport"] = library:create("ViewportFrame", {
                 Parent = items["stage"];
                 Name = "\0";
-                Position = dim2(0.5, -55, 0, 72);
-                Size = dim_offset(110, 184);
+                Position = dim2(0.5, -116, 0, 58);
+                Size = dim_offset(232, 292);
                 BackgroundTransparency = 1;
                 BorderSizePixel = 0;
+                Ambient = rgb(255, 255, 255);
+                LightColor = rgb(255, 255, 255);
+                LightDirection = vec3(-0.5, -1, -0.3);
             })
 
-            local function part(name, pos, size, color_value, radius)
-                items[name] = library:create("Frame", {
-                    Parent = items["character"];
-                    Name = "\0";
-                    Position = pos;
-                    Size = size;
-                    BorderSizePixel = 0;
-                    BackgroundColor3 = color_value;
-                })
+            items["world"] = Instance.new("WorldModel")
+            items["world"].Parent = items["viewport"]
 
-                library:create("UICorner", {
-                    Parent = items[name];
-                    CornerRadius = dim(0, radius or 5);
-                })
+            items["camera"] = Instance.new("Camera")
+            items["camera"].CFrame = cfr(0, 2.45, 6.2) * angle(0, rad(180), 0)
+            items["camera"].Parent = items["viewport"]
+            items["viewport"].CurrentCamera = items["camera"]
 
-                library:create("UIStroke", {
-                    Parent = items[name];
-                    ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
-                    Color = rgb(30, 30, 34);
-                })
+            local function clean_model(model)
+                for _, object in model:GetDescendants() do
+                    if object:IsA("Script") or object:IsA("LocalScript") then
+                        object:Destroy()
+                    elseif object:IsA("BasePart") then
+                        object.Anchored = true
+                        object.CanCollide = false
+                        object.CastShadow = false
+                    end
+                end
             end
 
-            part("head", dim_offset(38, 0), dim_offset(34, 34), rgb(238, 196, 139), 999)
-            part("hair_left", dim_offset(29, -7), dim_offset(25, 20), rgb(121, 73, 39), 7)
-            part("hair_right", dim_offset(56, -7), dim_offset(25, 20), rgb(121, 73, 39), 7)
-            part("torso", dim_offset(29, 43), dim_offset(52, 70), rgb(52, 112, 181), 8)
-            part("left_arm", dim_offset(7, 48), dim_offset(20, 68), rgb(238, 196, 139), 8)
-            part("right_arm", dim_offset(83, 48), dim_offset(20, 68), rgb(238, 196, 139), 8)
-            part("left_leg", dim_offset(31, 122), dim_offset(22, 62), rgb(42, 72, 135), 8)
-            part("right_leg", dim_offset(57, 122), dim_offset(22, 62), rgb(42, 72, 135), 8)
+            local function place_model(model)
+                if items["model"] then
+                    items["model"]:Destroy()
+                end
+
+                items["model"] = model
+                items["model"].Parent = items["world"]
+                clean_model(items["model"])
+
+                items["model"]:PivotTo(cfr(0, -2.15, 0) * angle(0, rad(180), 0))
+
+                local humanoid = items["model"]:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+                end
+            end
+
+            local function load_character_model()
+                local requested_user_id = properties.user_id or properties.UserId or (lp and lp.UserId)
+                local model
+
+                if requested_user_id then
+                    local ok, description = pcall(function()
+                        return players:GetHumanoidDescriptionFromUserId(requested_user_id)
+                    end)
+
+                    if ok and description then
+                        local made_ok, made_model = pcall(function()
+                            return players:CreateHumanoidModelFromDescription(description, Enum.HumanoidRigType.R15)
+                        end)
+
+                        if made_ok and made_model then
+                            model = made_model
+                        end
+                    end
+                end
+
+                if not model and lp and lp.Character then
+                    local clone_ok, clone = pcall(function()
+                        return lp.Character:Clone()
+                    end)
+
+                    if clone_ok and clone then
+                        model = clone
+                    end
+                end
+
+                if not model then
+                    local fallback_ok, fallback = pcall(function()
+                        return players:CreateHumanoidModelFromDescription(Instance.new("HumanoidDescription"), Enum.HumanoidRigType.R15)
+                    end)
+
+                    if fallback_ok then
+                        model = fallback
+                    end
+                end
+
+                if model then
+                    place_model(model)
+                end
+            end
+
+            load_character_model()
 
             items["footer"] = library:create("TextLabel", {
                 Parent = items["main"];
@@ -3946,16 +4034,28 @@
                 TextColor3 = rgb(145, 145, 145);
                 BackgroundTransparency = 1;
                 BorderSizePixel = 0;
-                Position = dim_offset(16, 398);
+                Position = dim_offset(16, 448);
                 Size = dim2(1, -28, 0, 18);
                 TextXAlignment = Enum.TextXAlignment.Left;
             })
 
             library:draggify(items["main"])
 
-            function cfg.set_visible(bool)
-                items["main"].Visible = bool
+            function cfg.refresh_visible()
+                items["main"].Visible = cfg.enabled and cfg.tab_visible
             end
+
+            function cfg.set_visible(bool)
+                cfg.enabled = bool
+                cfg.refresh_visible()
+            end
+
+            function cfg.set_tab_visible(bool)
+                cfg.tab_visible = bool
+                cfg.refresh_visible()
+            end
+
+            cfg.refresh_visible()
 
             function cfg.update()
                 local esp = flags["esp"] == true or flags["ESP"] == true
@@ -3986,15 +4086,20 @@
                 items["tracer"].BackgroundColor3 = accent
                 items["name"].TextColor3 = accent
 
-                local body_color = chams and accent:Lerp(rgb(0, 0, 0), 0.15) or rgb(52, 112, 181)
-                local limb_color = chams and accent:Lerp(rgb(255, 255, 255), 0.12) or rgb(238, 196, 139)
-                local leg_color = chams and accent:Lerp(rgb(0, 0, 0), 0.35) or rgb(42, 72, 135)
-
-                items["torso"].BackgroundColor3 = body_color
-                items["left_arm"].BackgroundColor3 = limb_color
-                items["right_arm"].BackgroundColor3 = limb_color
-                items["left_leg"].BackgroundColor3 = leg_color
-                items["right_leg"].BackgroundColor3 = leg_color
+                if items["model"] then
+                    for _, object in items["model"]:GetDescendants() do
+                        if object:IsA("BasePart") then
+                            if chams then
+                                object.Color = accent
+                                object.Material = Enum.Material.ForceField
+                                object.Transparency = 0.08
+                            else
+                                object.Material = Enum.Material.Plastic
+                                object.Transparency = 0
+                            end
+                        end
+                    end
+                end
             end
 
             library:connection(run.RenderStepped, function()
