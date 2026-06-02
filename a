@@ -3985,25 +3985,29 @@
             items["viewport"].CurrentCamera = items["camera"]
 
             local skeleton_segments = {
-                {{"Head"}, {"UpperTorso", "Torso"}},
-                {{"UpperTorso", "Torso"}, {"LowerTorso", "Torso"}},
-                {{"UpperTorso", "Torso"}, {"LeftUpperArm", "Left Arm"}},
-                {{"LeftUpperArm", "Left Arm"}, {"LeftLowerArm", "Left Arm"}},
-                {{"LeftLowerArm", "Left Arm"}, {"LeftHand", "Left Arm"}},
-                {{"UpperTorso", "Torso"}, {"RightUpperArm", "Right Arm"}},
-                {{"RightUpperArm", "Right Arm"}, {"RightLowerArm", "Right Arm"}},
-                {{"RightLowerArm", "Right Arm"}, {"RightHand", "Right Arm"}},
-                {{"LowerTorso", "Torso"}, {"LeftUpperLeg", "Left Leg"}},
-                {{"LeftUpperLeg", "Left Leg"}, {"LeftLowerLeg", "Left Leg"}},
-                {{"LeftLowerLeg", "Left Leg"}, {"LeftFoot", "Left Leg"}},
-                {{"LowerTorso", "Torso"}, {"RightUpperLeg", "Right Leg"}},
-                {{"RightUpperLeg", "Right Leg"}, {"RightLowerLeg", "Right Leg"}},
-                {{"RightLowerLeg", "Right Leg"}, {"RightFoot", "Right Leg"}},
+                {{"Head"}, {"NeckRigAttachment"}, {"UpperTorso", "Torso"}, {"NeckRigAttachment"}},
+                {{"UpperTorso", "Torso"}, {"WaistRigAttachment"}, {"LowerTorso", "Torso"}, {"WaistRigAttachment"}},
+                {{"UpperTorso", "Torso"}, {"LeftShoulderRigAttachment"}, {"LeftUpperArm", "Left Arm"}, {"LeftShoulderRigAttachment"}},
+                {{"LeftUpperArm", "Left Arm"}, {"LeftElbowRigAttachment"}, {"LeftLowerArm", "Left Arm"}, {"LeftElbowRigAttachment"}},
+                {{"LeftLowerArm", "Left Arm"}, {"LeftWristRigAttachment"}, {"LeftHand", "Left Arm"}, {"LeftWristRigAttachment"}},
+                {{"UpperTorso", "Torso"}, {"RightShoulderRigAttachment"}, {"RightUpperArm", "Right Arm"}, {"RightShoulderRigAttachment"}},
+                {{"RightUpperArm", "Right Arm"}, {"RightElbowRigAttachment"}, {"RightLowerArm", "Right Arm"}, {"RightElbowRigAttachment"}},
+                {{"RightLowerArm", "Right Arm"}, {"RightWristRigAttachment"}, {"RightHand", "Right Arm"}, {"RightWristRigAttachment"}},
+                {{"LowerTorso", "Torso"}, {"LeftHipRigAttachment"}, {"LeftUpperLeg", "Left Leg"}, {"LeftHipRigAttachment"}},
+                {{"LeftUpperLeg", "Left Leg"}, {"LeftKneeRigAttachment"}, {"LeftLowerLeg", "Left Leg"}, {"LeftKneeRigAttachment"}},
+                {{"LeftLowerLeg", "Left Leg"}, {"LeftAnkleRigAttachment"}, {"LeftFoot", "Left Leg"}, {"LeftAnkleRigAttachment"}},
+                {{"LowerTorso", "Torso"}, {"RightHipRigAttachment"}, {"RightUpperLeg", "Right Leg"}, {"RightHipRigAttachment"}},
+                {{"RightUpperLeg", "Right Leg"}, {"RightKneeRigAttachment"}, {"RightLowerLeg", "Right Leg"}, {"RightKneeRigAttachment"}},
+                {{"RightLowerLeg", "Right Leg"}, {"RightAnkleRigAttachment"}, {"RightFoot", "Right Leg"}, {"RightAnkleRigAttachment"}},
             }
 
             local function get_body_part(names)
                 if not items["model"] then
                     return
+                end
+
+                if type(names) ~= "table" then
+                    names = {names}
                 end
 
                 for _, part_name in names do
@@ -4012,6 +4016,24 @@
                         return part
                     end
                 end
+            end
+
+            local function get_rig_point(part_names, attachment_names)
+                local part = get_body_part(part_names)
+                if not part then
+                    return
+                end
+
+                if attachment_names then
+                    for _, attachment_name in attachment_names do
+                        local attachment = part:FindFirstChild(attachment_name)
+                        if attachment and attachment:IsA("Attachment") then
+                            return attachment.WorldPosition
+                        end
+                    end
+                end
+
+                return part.Position
             end
 
             local function get_skeleton_line(index)
@@ -4097,8 +4119,8 @@
                 return dot
             end
 
-            local function project_part(part)
-                if not part then
+            local function project_target(target)
+                if not target then
                     return nil, false
                 end
 
@@ -4107,7 +4129,8 @@
                     return nil, false
                 end
 
-                local object_space = items["camera"].CFrame:PointToObjectSpace(part.Position)
+                local position = typeof(target) == "Vector3" and target or target.Position
+                local object_space = items["camera"].CFrame:PointToObjectSpace(position)
                 local depth = -object_space.Z
                 if depth <= 0 then
                     return nil, false
@@ -4123,6 +4146,10 @@
                 end
 
                 return vec2(x, y), true
+            end
+
+            local function project_part(part)
+                return project_target(part)
             end
 
             local function viewport_to_stage(point)
@@ -4172,50 +4199,123 @@
                 end
             end
 
+            local function set_preview_line(rod, from_point, to_point, accent, thickness, outline_enabled, outline_color, outline_thickness)
+                local line = rod.line
+                local outline = rod.outline
+
+                if not from_point or not to_point then
+                    if outline then
+                        outline.Visible = false
+                    end
+                    line.Visible = false
+                    return
+                end
+
+                local delta = to_point - from_point
+                local length = delta.Magnitude
+                if length <= 2 then
+                    if outline then
+                        outline.Visible = false
+                    end
+                    line.Visible = false
+                    return
+                end
+
+                thickness = clamp(thickness or 1, 1, 12)
+                outline_thickness = clamp(outline_thickness or 2, 1, 12)
+                local rotation = math.deg(math.atan(delta.Y, delta.X))
+
+                if outline then
+                    outline.BackgroundColor3 = outline_color or rgb(0, 0, 0)
+                    outline.Position = dim_offset((from_point.X + to_point.X) / 2, (from_point.Y + to_point.Y) / 2)
+                    outline.Size = dim_offset(length, thickness + (outline_thickness * 2))
+                    outline.Rotation = rotation
+                    outline.Visible = outline_enabled == true
+                end
+
+                line.BackgroundColor3 = accent
+                line.Position = dim_offset((from_point.X + to_point.X) / 2, (from_point.Y + to_point.Y) / 2)
+                line.Size = dim_offset(length, thickness)
+                line.Rotation = rotation
+                line.Visible = true
+            end
+
             local function update_skeleton(accent, visible, style)
                 for index, segment in skeleton_segments do
                     local rod = get_skeleton_line(index)
-                    local line = rod.line
-                    local outline = rod.outline
-                    local from = get_body_part(segment[1])
-                    local to = get_body_part(segment[2])
-                    local from_point, from_visible = project_part(from)
-                    local to_point, to_visible = project_part(to)
+                    local from_point, from_visible = project_target(get_rig_point(segment[1], segment[2]))
+                    local to_point, to_visible = project_target(get_rig_point(segment[3], segment[4]))
                     local thickness = clamp(style.thickness or 2, 1, 12)
                     local outline_thickness = clamp(style.outline_thickness or 2, 1, 12)
 
                     if visible and from_point and to_point and from_visible and to_visible then
                         from_point = viewport_to_stage(from_point)
                         to_point = viewport_to_stage(to_point)
-                        local delta = to_point - from_point
-                        local length = delta.Magnitude
-
-                        if length > 2 then
-                            if outline then
-                                outline.BackgroundColor3 = style.outline_color or rgb(0, 0, 0)
-                                outline.Position = dim_offset((from_point.X + to_point.X) / 2, (from_point.Y + to_point.Y) / 2)
-                                outline.Size = dim_offset(length, thickness + (outline_thickness * 2))
-                                outline.Rotation = math.deg(math.atan(delta.Y, delta.X))
-                                outline.Visible = style.outline == true
-                            end
-
-                            line.BackgroundColor3 = accent
-                            line.Position = dim_offset((from_point.X + to_point.X) / 2, (from_point.Y + to_point.Y) / 2)
-                            line.Size = dim_offset(length, thickness)
-                            line.Rotation = math.deg(math.atan(delta.Y, delta.X))
-                            line.Visible = true
-                        else
-                            if outline then
-                                outline.Visible = false
-                            end
-                            line.Visible = false
-                        end
+                        set_preview_line(rod, from_point, to_point, accent, thickness, style.outline, style.outline_color, outline_thickness)
                     else
-                        if outline then
-                            outline.Visible = false
-                        end
-                        line.Visible = false
+                        set_preview_line(rod, nil, nil, accent, thickness, false, style.outline_color, outline_thickness)
                     end
+                end
+            end
+
+            local function update_snapline(accent, visible, style)
+                local rod = get_skeleton_line(120)
+                if not visible then
+                    set_preview_line(rod, nil, nil, accent, style.thickness, false, style.outline_color, style.outline_thickness)
+                    return
+                end
+
+                local from
+                local stage_size = items["stage"].AbsoluteSize
+                if style.mode == "Top" then
+                    from = vec2(stage_size.X / 2, 0)
+                elseif style.mode == "Center" then
+                    from = vec2(stage_size.X / 2, stage_size.Y / 2)
+                else
+                    from = vec2(stage_size.X / 2, stage_size.Y)
+                end
+
+                local target, target_visible = project_target(get_rig_point({"LowerTorso", "Torso", "HumanoidRootPart"}))
+                if target and target_visible then
+                    target = viewport_to_stage(target)
+                end
+
+                set_preview_line(rod, from, target, accent, style.thickness, style.outline, style.outline_color, style.outline_thickness)
+            end
+
+            local function update_look_direction(accent, visible, style)
+                local main = get_skeleton_line(101)
+                local arrow_a = get_skeleton_line(102)
+                local arrow_b = get_skeleton_line(103)
+                local head = get_body_part({"Head"})
+
+                if not visible or not head then
+                    set_preview_line(main, nil, nil, accent, style.thickness, false, style.outline_color, style.outline_thickness)
+                    set_preview_line(arrow_a, nil, nil, accent, style.thickness, false, style.outline_color, style.outline_thickness)
+                    set_preview_line(arrow_b, nil, nil, accent, style.thickness, false, style.outline_color, style.outline_thickness)
+                    return
+                end
+
+                local from, from_visible = project_target(head.Position)
+                local to, to_visible = project_target(head.Position + head.CFrame.LookVector * (style.length or 5))
+                if from and to and from_visible and to_visible then
+                    from = viewport_to_stage(from)
+                    to = viewport_to_stage(to)
+                    set_preview_line(main, from, to, accent, style.thickness, style.outline, style.outline_color, style.outline_thickness)
+
+                    local direction = to - from
+                    if direction.Magnitude > 0 then
+                        direction = direction.Unit
+                        local normal = vec2(-direction.Y, direction.X)
+                        local arrow_length = 18
+                        local arrow_width = 8
+                        set_preview_line(arrow_a, to, to - direction * arrow_length + normal * arrow_width, accent, style.thickness, style.outline, style.outline_color, style.outline_thickness)
+                        set_preview_line(arrow_b, to, to - direction * arrow_length - normal * arrow_width, accent, style.thickness, style.outline, style.outline_color, style.outline_thickness)
+                    end
+                else
+                    set_preview_line(main, nil, nil, accent, style.thickness, false, style.outline_color, style.outline_thickness)
+                    set_preview_line(arrow_a, nil, nil, accent, style.thickness, false, style.outline_color, style.outline_thickness)
+                    set_preview_line(arrow_b, nil, nil, accent, style.thickness, false, style.outline_color, style.outline_thickness)
                 end
             end
 
@@ -4459,6 +4559,7 @@
                 local tracer = esp and pick_setting("SnaplineEnabled", flags["tracers"] == true or flags["tracer"] == true or flags["esp_snaplines"] == true)
                 local skeleton = esp and pick_setting("SkeletonEnabled", flags["skeleton"] == true or flags["esp_skeleton"] == true)
                 local head_dot = esp and pick_setting("HeadDotEnabled", flags["head_dot"] == true or flags["headdot"] == true or flags["esp_head_dot"] == true)
+                local look_direction = esp and pick_setting("LookDirectionEnabled", flags["look_direction"] == true or flags["esp_look_direction"] == true)
                 local chams = esp and pick_setting("HighlightEnabled", flags["enemy_chams"] == true or flags["chams"] == true or flags["esp_highlight"] == true)
                 local accent = themes.preset.accent
                 local color_flag = flags["enemy_color"]
@@ -4476,12 +4577,27 @@
                 local tracer_color = pick_color("SnaplineColor", accent)
                 local skeleton_color = pick_color("SkeletonColor", accent)
                 local head_dot_color = pick_color("HeadDotColor", accent)
+                local look_direction_color = pick_color("LookDirectionColor", accent)
                 local chams_color = pick_color("HighlightFillColor", accent)
                 local box_thickness = clamp(pick_setting("BoxThickness", 1), 1, 12)
                 local skeleton_style = {
                     thickness = pick_setting("SkeletonThickness", 2),
                     outline = pick_setting("SkeletonOutlineEnabled", true),
                     outline_color = pick_color("SkeletonOutlineColor", rgb(0, 0, 0)),
+                    outline_thickness = pick_setting("OutlineThickness", 2),
+                }
+                local snapline_style = {
+                    mode = pick_setting("SnaplineMode", "Bottom"),
+                    thickness = pick_setting("SnaplineThickness", 1),
+                    outline = pick_setting("SnaplineOutlineEnabled", true),
+                    outline_color = pick_color("SnaplineOutlineColor", rgb(0, 0, 0)),
+                    outline_thickness = pick_setting("OutlineThickness", 2),
+                }
+                local look_direction_style = {
+                    length = pick_setting("LookDirectionLength", 5),
+                    thickness = pick_setting("LookDirectionThickness", 1),
+                    outline = pick_setting("LookDirectionOutlineEnabled", true),
+                    outline_color = pick_color("LookDirectionOutlineColor", rgb(0, 0, 0)),
                     outline_thickness = pick_setting("OutlineThickness", 2),
                 }
                 local head_dot_style = {
@@ -4496,7 +4612,7 @@
                 items["name"].Visible = name
                 items["health_back"].Visible = health
                 items["distance"].Visible = distance
-                items["tracer"].Visible = tracer
+                items["tracer"].Visible = false
                 items["footer"].Text = esp and "ESP preview active" or "ESP disabled"
 
                 items["box_stroke"].Color = box_color
@@ -4534,6 +4650,8 @@
 
                 update_skeleton(skeleton_color, skeleton, skeleton_style)
                 update_head_dot(head_dot_color, head_dot, head_dot_style)
+                update_snapline(tracer_color, tracer, snapline_style)
+                update_look_direction(look_direction_color, look_direction, look_direction_style)
             end
 
             library:connection(run.RenderStepped, function()
