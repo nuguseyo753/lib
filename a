@@ -1,17 +1,17 @@
 --[[
-    MONO UI
-    A monochrome Roblox/Luau UI library inspired by compact glass panels.
+    Astra Interface
+    A Millenium-inspired Roblox/Luau UI library with Nhack-style reactive widgets.
 
     Example:
 
-    local Mono = loadstring(game:HttpGet(".../Mono UI.luau"))()
-    local Window = Mono:CreateWindow({ Title = "MONO UI", Size = UDim2.fromOffset(760, 480) })
-    local Main = Window:AddTab("Main", "home")
-    local General = Main:AddSection("General", 1)
+    local UI = loadstring(game:HttpGet(".../library.lua"))()
+    local Window = UI:CreateWindow({ Name = "Astra", Size = UDim2.fromOffset(790, 510) })
+    local Main, Misc, Settings = Window:tab({ name = "Combat", tabs = { "Main", "Misc", "Settings" } })
+    local General = Main:section({ name = "General", side = 1 })
 
     General:AddToggle("Enable", { Default = true, Callback = function(Value) print(Value) end })
     General:AddSlider("FOV", { Min = 30, Max = 200, Default = 120, Callback = function(Value) print(Value) end })
-    General:AddButton("Save Config", function() Mono:Notify("Config", "Saved") end)
+    General:button({ name = "Save Config", callback = function() UI:Notify("Config", "Saved") end })
 ]]
 
 local cloneref = cloneref or clonereference or function(Instance)
@@ -39,6 +39,7 @@ local Library = {
     Connections = {},
     Windows = {},
     Notifications = {},
+    EspPreviews = {},
     Theme = {
         Background = Color3.fromRGB(9, 10, 10),
         Surface = Color3.fromRGB(17, 18, 18),
@@ -49,8 +50,8 @@ local Library = {
         Text = Color3.fromRGB(242, 242, 242),
         MutedText = Color3.fromRGB(176, 178, 180),
         FaintText = Color3.fromRGB(120, 122, 125),
-        Accent = Color3.fromRGB(242, 242, 242),
-        AccentDark = Color3.fromRGB(0, 0, 0),
+        Accent = Color3.fromRGB(166, 147, 243),
+        AccentDark = Color3.fromRGB(18, 18, 22),
         Danger = Color3.fromRGB(235, 76, 76),
         Success = Color3.fromRGB(232, 232, 232),
     },
@@ -352,7 +353,7 @@ function Library:Notify(Title, Content, Duration)
     })
 
     local Bar = new("Frame", {
-        BackgroundColor3 = Library.Theme.Text,
+        BackgroundColor3 = Library.Theme.Accent,
         BorderSizePixel = 0,
         Position = UDim2.fromOffset(20, 72),
         Size = UDim2.new(1, -40, 0, 3),
@@ -603,7 +604,7 @@ function Library._createToggle(Parent, Name, Info)
 
     local Track = new("TextButton", {
         AutoButtonColor = false,
-        BackgroundColor3 = Toggle.Value and Library.Theme.Text or Library.Theme.Background,
+        BackgroundColor3 = Toggle.Value and Library.Theme.Accent or Library.Theme.Background,
         BorderSizePixel = 0,
         Position = UDim2.new(1, -39, 0.5, -10),
         Size = UDim2.fromOffset(39, 20),
@@ -628,7 +629,7 @@ function Library._createToggle(Parent, Name, Info)
         Toggle.Value = Value and true or false
         Library.Flags[Info.Flag or Name] = Toggle.Value
 
-        tween(Track, { BackgroundColor3 = Toggle.Value and Library.Theme.Text or Library.Theme.Background }, 0.14)
+        tween(Track, { BackgroundColor3 = Toggle.Value and Library.Theme.Accent or Library.Theme.Background }, 0.14)
         tween(Knob, {
             BackgroundColor3 = Toggle.Value and Library.Theme.AccentDark or Library.Theme.StrokeLight,
             Position = Toggle.Value and UDim2.fromOffset(21, 3) or UDim2.fromOffset(3, 3),
@@ -638,6 +639,10 @@ function Library._createToggle(Parent, Name, Info)
 
         if Initialized and Info.Notify ~= false then
             Library:Notify(Name, Toggle.Value and "Enabled" or "Disabled", 2)
+        end
+
+        if Library.RefreshEspPreviews then
+            Library:RefreshEspPreviews()
         end
 
         Initialized = true
@@ -1031,6 +1036,10 @@ function Library._createColorPicker(Parent, Name, Info)
         Swatch.BackgroundColor3 = Color
         Library.Flags[Info.Flag or Name] = Color
         safeCallback(Info.Callback, Color)
+
+        if Library.RefreshEspPreviews then
+            Library:RefreshEspPreviews()
+        end
     end
 
     addConnection(Swatch.MouseButton1Click:Connect(function()
@@ -1092,6 +1101,188 @@ function Library._createParagraph(Parent, Name, Content)
     Row.Size = UDim2.new(1, 0, 0, math.max(48, Bounds.Y + 32))
 
     return ContentLabel
+end
+
+function Library:RefreshEspPreviews()
+    for _, Preview in ipairs(Library.EspPreviews) do
+        if Preview and Preview.Update then
+            Preview:Update()
+        end
+    end
+end
+
+function Library._createEspPreview(Parent, Info)
+    Info = normalizeInfo(Info, {
+        Name = "enemy_player",
+        Health = 76,
+    })
+
+    local Row = addElementContainer(Parent, 264)
+    local Outer = panel({
+        BackgroundColor3 = Library.Theme.Background,
+        BackgroundTransparency = 0.02,
+        Size = UDim2.fromScale(1, 1),
+        Parent = Row,
+    })
+
+    local Header = label("ESP Preview", 13, Enum.FontWeight.SemiBold)
+    Header.Position = UDim2.fromOffset(14, 8)
+    Header.Size = UDim2.new(1, -28, 0, 20)
+    Header.Parent = Outer
+
+    local Stage = new("Frame", {
+        BackgroundColor3 = Color3.fromRGB(7, 8, 8),
+        BackgroundTransparency = 0.05,
+        BorderSizePixel = 0,
+        Position = UDim2.fromOffset(14, 36),
+        Size = UDim2.new(1, -28, 0, 184),
+        Parent = Outer,
+    }, {
+        corner(6),
+        stroke(Library.Theme.Stroke, 0.25, 1),
+    })
+
+    local Grid = new("Frame", {
+        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+        BackgroundTransparency = 0.95,
+        BorderSizePixel = 0,
+        Position = UDim2.fromOffset(0, 132),
+        Size = UDim2.new(1, 0, 0, 1),
+        Parent = Stage,
+    })
+
+    local NameTag = label(Info.Name, 12, Enum.FontWeight.SemiBold)
+    NameTag.TextXAlignment = Enum.TextXAlignment.Center
+    NameTag.Position = UDim2.new(0.5, -70, 0, 8)
+    NameTag.Size = UDim2.fromOffset(140, 18)
+    NameTag.Parent = Stage
+
+    local DistanceTag = label("72m", 11, Enum.FontWeight.Medium)
+    DistanceTag.TextXAlignment = Enum.TextXAlignment.Center
+    DistanceTag.TextColor3 = Library.Theme.MutedText
+    DistanceTag.Position = UDim2.new(0.5, -70, 1, -24)
+    DistanceTag.Size = UDim2.fromOffset(140, 16)
+    DistanceTag.Parent = Stage
+
+    local Box = new("Frame", {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0.5, -41, 0, 31),
+        Size = UDim2.fromOffset(82, 128),
+        Parent = Stage,
+    }, {
+        stroke(Library.Theme.Text, 0.05, 1),
+    })
+
+    local HealthBack = new("Frame", {
+        BackgroundColor3 = Color3.fromRGB(18, 18, 18),
+        BorderSizePixel = 0,
+        Position = UDim2.new(0.5, -52, 0, 31),
+        Size = UDim2.fromOffset(4, 128),
+        Parent = Stage,
+    }, {
+        corner(2),
+    })
+
+    local Health = new("Frame", {
+        AnchorPoint = Vector2.new(0, 1),
+        BackgroundColor3 = Color3.fromRGB(235, 235, 235),
+        BorderSizePixel = 0,
+        Position = UDim2.fromScale(0, 1),
+        Size = UDim2.new(1, 0, Info.Health / 100, 0),
+        Parent = HealthBack,
+    }, {
+        corner(2),
+    })
+
+    local Tracer = new("Frame", {
+        AnchorPoint = Vector2.new(0.5, 1),
+        BackgroundColor3 = Library.Theme.Text,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0.5, 0, 1, -1),
+        Rotation = 0,
+        Size = UDim2.fromOffset(1, 42),
+        Parent = Stage,
+    })
+
+    local Character = new("Frame", {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0.5, -32, 0, 43),
+        Size = UDim2.fromOffset(64, 104),
+        Parent = Stage,
+    })
+
+    local Parts = {}
+    local function bodyPart(Name, Position, Size, Radius)
+        local Part = new("Frame", {
+            BackgroundColor3 = Color3.fromRGB(72, 74, 76),
+            BorderSizePixel = 0,
+            Position = Position,
+            Size = Size,
+            Parent = Character,
+        }, {
+            corner(Radius or 4),
+            stroke(Color3.fromRGB(110, 112, 115), 0.45, 1),
+        })
+        Parts[Name] = Part
+        return Part
+    end
+
+    bodyPart("Head", UDim2.fromOffset(23, 0), UDim2.fromOffset(18, 18), 9)
+    bodyPart("Torso", UDim2.fromOffset(18, 22), UDim2.fromOffset(28, 42), 6)
+    bodyPart("LeftArm", UDim2.fromOffset(6, 25), UDim2.fromOffset(11, 38), 5)
+    bodyPart("RightArm", UDim2.fromOffset(47, 25), UDim2.fromOffset(11, 38), 5)
+    bodyPart("LeftLeg", UDim2.fromOffset(19, 68), UDim2.fromOffset(12, 36), 5)
+    bodyPart("RightLeg", UDim2.fromOffset(33, 68), UDim2.fromOffset(12, 36), 5)
+
+    local Footer = label("Toggle ESP options to preview output.", 11, Enum.FontWeight.Medium)
+    Footer.TextColor3 = Library.Theme.MutedText
+    Footer.Position = UDim2.fromOffset(14, 226)
+    Footer.Size = UDim2.new(1, -28, 0, 18)
+    Footer.Parent = Outer
+
+    local Preview = {
+        Frame = Row,
+        Parts = Parts,
+        Box = Box,
+        NameTag = NameTag,
+        DistanceTag = DistanceTag,
+        HealthBack = HealthBack,
+        Health = Health,
+        Tracer = Tracer,
+        Footer = Footer,
+    }
+
+    function Preview:Update()
+        local Flags = Library.Flags
+        local Esp = Flags.esp == true or Flags.ESP == true
+        local Chams = Flags.enemy_chams == true or Flags.chams == true
+        local BoxEnabled = Esp and (Flags.box ~= false)
+        local NameEnabled = Esp and (Flags.name ~= false)
+        local HealthEnabled = Esp and (Flags.health_bar ~= false)
+        local DistanceEnabled = Esp and (Flags.distance == true)
+        local TracersEnabled = Esp and (Flags.tracers == true)
+        local Color = Flags.enemy_color or Library.Theme.Text
+
+        Box.Visible = BoxEnabled
+        NameTag.Visible = NameEnabled
+        HealthBack.Visible = HealthEnabled
+        DistanceTag.Visible = DistanceEnabled
+        Tracer.Visible = TracersEnabled
+
+        Box.UIStroke.Color = Color
+        Tracer.BackgroundColor3 = Color
+        Health.BackgroundColor3 = HealthEnabled and Color or Library.Theme.Text
+        Footer.Text = Esp and "Previewing active ESP output." or "ESP disabled. Character remains unmarked."
+
+        for _, Part in pairs(Parts) do
+            Part.BackgroundColor3 = Chams and Color:Lerp(Color3.new(0, 0, 0), 0.15) or Color3.fromRGB(72, 74, 76)
+            Part.BackgroundTransparency = Esp and 0 or 0.25
+        end
+    end
+
+    Preview:Update()
+    table.insert(Library.EspPreviews, Preview)
+    return Preview
 end
 
 function Library:CreateWatermark(Info)
@@ -1374,7 +1565,7 @@ function Library:CreateWindow(Info)
 
         if DockButton.Parent then
             DockButton.Text = State and "Hide " .. tostring(Info.DockText) or "Open " .. tostring(Info.DockText)
-            DockButton.BackgroundColor3 = State and Library.Theme.Text or Library.Theme.SurfaceLight
+            DockButton.BackgroundColor3 = State and Library.Theme.Accent or Library.Theme.SurfaceLight
             DockButton.TextColor3 = State and Library.Theme.AccentDark or Library.Theme.Text
         end
     end
@@ -1529,7 +1720,7 @@ function Library:CreateWindow(Info)
 
             local Accent = new("Frame", {
                 AnchorPoint = Vector2.new(0.5, 1),
-                BackgroundColor3 = Library.Theme.Text,
+                BackgroundColor3 = Library.Theme.Accent,
                 BorderSizePixel = 0,
                 Position = UDim2.new(0.5, 0, 1, 3),
                 Size = UDim2.new(1, -20, 0, 4),
@@ -1778,6 +1969,10 @@ function Library:CreateWindow(Info)
                 return Library._createParagraph(Container, Name, Content)
             end
 
+            function Section:AddEspPreview(Options)
+                return Library._createEspPreview(Container, Options)
+            end
+
             function Section:AddLabel(Text)
                 local Row = addElementContainer(Container, 24)
                 local Label = label(Text, 13)
@@ -1857,6 +2052,10 @@ function Library:CreateWindow(Info)
             function Section:label(Options)
                 Options = Options or {}
                 return Section:AddLabel(Options.name or Options.Name or Options.text or Options.Text or "Label")
+            end
+
+            function Section:esp_preview(Options)
+                return Section:AddEspPreview(Options)
             end
 
             function Section:CreateSection(Text)
