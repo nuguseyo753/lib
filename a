@@ -298,6 +298,10 @@
 
             frame.InputBegan:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    if frame.Position.X.Scale ~= 0 or frame.Position.Y.Scale ~= 0 then
+                        frame.Position = dim2(0, frame.AbsolutePosition.X, 0, frame.AbsolutePosition.Y)
+                    end
+
                     dragging = true
                     start = input.Position
                     start_size = frame.Position
@@ -549,7 +553,7 @@
                     BackgroundTransparency = 1;
                     Name = "\0";
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(0, 128, 1, -25);
+                    Size = dim2(0, 140, 1, -25);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(14, 14, 16)
                 });
@@ -568,25 +572,25 @@
                     Parent = items[ "side_frame" ];
                     Name = "\0";
                     BackgroundTransparency = 1;
-                    Position = dim2(0, 0, 0, 4);
+                    Position = dim2(0, 0, 0, 46);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, 0, 1, -4);
+                    Size = dim2(1, 0, 1, -46);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(255, 255, 255)
                 }); cfg.button_holder = items[ "button_holder" ];
                 
                 library:create( "UIListLayout" , {
                     Parent = items[ "button_holder" ];
-                    Padding = dim(0, 4);
+                    Padding = dim(0, 8);
                     SortOrder = Enum.SortOrder.LayoutOrder
                 });
                 
                 library:create( "UIPadding" , {
-                    PaddingTop = dim(0, 4);
+                    PaddingTop = dim(0, 8);
                     PaddingBottom = dim(0, 16);
                     Parent = items[ "button_holder" ];
-                    PaddingRight = dim(0, 8);
-                    PaddingLeft = dim(0, 6)
+                    PaddingRight = dim(0, 10);
+                    PaddingLeft = dim(0, 8)
                 });
 
                 local accent = themes.preset.accent
@@ -598,12 +602,12 @@
                     Name = "\0";
                     Text = string.format('<u>%s</u><font color = "rgb(255, 255, 255)">%s</font>', cfg.name, cfg.suffix);
                     BackgroundTransparency = 1;
-                    Visible = false;
-                    Size = dim2(1, 0, 0, 0);
+                    Visible = true;
+                    Size = dim2(1, 0, 0, 42);
                     TextColor3 = themes.preset.accent;
                     BorderSizePixel = 0;
                     RichText = true;
-                    TextSize = 18;
+                    TextSize = 20;
                     BackgroundColor3 = rgb(255, 255, 255)
                 }); library:apply_theme(items[ "title" ], "accent", "TextColor3");
                 
@@ -611,9 +615,9 @@
                     Parent = items[ "main" ];
                     Name = "\0";
                     BackgroundTransparency = 1;
-                    Position = dim2(0, 128, 0, 0);
+                    Position = dim2(0, 140, 0, 0);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, -128, 0, 56);
+                    Size = dim2(1, -140, 0, 56);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(255, 255, 255)
                 }); cfg.multi_holder = items[ "multi_holder" ];
@@ -650,9 +654,9 @@
                     Parent = items[ "main" ];
                     Name = "\0";
                     BackgroundTransparency = 1;
-                    Position = dim2(0, 128, 0, 56);
+                    Position = dim2(0, 140, 0, 56);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, -128, 1, -81);
+                    Size = dim2(1, -140, 1, -81);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(14, 14, 16);
                     ZIndex = 2;
@@ -766,9 +770,9 @@
                     Name = "\0";
                     Visible = false;
                     BackgroundTransparency = 1;
-                    Position = dim2(0, 128, 0, 56);
+                    Position = dim2(0, 140, 0, 56);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, -148, 1, -101);
+                    Size = dim2(1, -160, 1, -101);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(255, 255, 255)
                 });
@@ -783,9 +787,9 @@
                         AutoButtonColor = false;
                         BackgroundTransparency = 1;
                         Name = "\0";
-                        Size = dim2(1, 0, 0, 32);
+                        Size = dim2(1, 0, 0, 38);
                         BorderSizePixel = 0;
-                        TextSize = 14;
+                        TextSize = 15;
                         BackgroundColor3 = rgb(22, 22, 22)
                     });
                     
@@ -812,12 +816,12 @@
                         Parent = items[ "button" ];
                         Name = "\0";
                         Size = dim2(0, 0, 1, 0);
-                        Position = dim2(0, 8, 0, 0);
+                        Position = dim2(0, 10, 0, 0);
                         BackgroundTransparency = 1;
                         TextXAlignment = Enum.TextXAlignment.Left;
                         BorderSizePixel = 0;
                         AutomaticSize = Enum.AutomaticSize.X;
-                        TextSize = 12;
+                        TextSize = 14;
                         BackgroundColor3 = rgb(255, 255, 255)
                     });
                     
@@ -837,7 +841,7 @@
                         Name = "\0";
                         AnchorPoint = vec2(0, 0.5);
                         Position = dim2(0, 0, 0.5, 0);
-                        Size = dim2(0, 2, 1, -10);
+                        Size = dim2(0, 2, 1, -12);
                         BorderSizePixel = 0;
                         BackgroundTransparency = 1;
                         BackgroundColor3 = themes.preset.accent;
@@ -1049,7 +1053,7 @@
                         self.items[ "global_fade" ].BackgroundTransparency = 0
                         
                         library:tween(self.items[ "global_fade" ], {BackgroundTransparency = 1}, Enum.EasingStyle.Quad, 0.4)
-                        selected_tab[ 4 ].Size = dim2(1, -148, 1, -101)
+                        selected_tab[ 4 ].Size = dim2(1, -160, 1, -101)
                     end
 
                     library:tween(selected_tab[ 1 ], {BackgroundTransparency = 1})
@@ -1069,7 +1073,7 @@
                 library:tween(items[ "icon" ], {ImageColor3 = rgb(255, 255, 255)})
                 library:tween(items[ "name" ], {TextColor3 = rgb(255, 255, 255)})
                 library:tween(items[ "active_line" ], {BackgroundTransparency = 0})
-                library:tween(items[ "tab_holder" ], {Size = dim2(1, -128, 1, -81)}, Enum.EasingStyle.Quad, 0.4)
+                library:tween(items[ "tab_holder" ], {Size = dim2(1, -140, 1, -81)}, Enum.EasingStyle.Quad, 0.4)
                 
                 items[ "tab_holder" ].Visible = true 
                 items[ "tab_holder" ].Parent = self.items[ "main" ]
@@ -3773,6 +3777,7 @@
                 health = properties.health or properties.Health or 76,
                 enabled = properties.visible == true,
                 tab_visible = string.find(string.lower(library.current_tab_name or ""), "visual") ~= nil,
+                part_defaults = {},
                 items = {},
             }
 
@@ -3945,7 +3950,7 @@
             items["world"].Parent = items["viewport"]
 
             items["camera"] = Instance.new("Camera")
-            items["camera"].CFrame = cfr(0, 2.45, 6.2) * angle(0, rad(180), 0)
+            items["camera"].CFrame = CFrame.lookAt(vec3(0, 2.2, 7), vec3(0, 2.2, 0))
             items["camera"].Parent = items["viewport"]
             items["viewport"].CurrentCamera = items["camera"]
 
@@ -3954,6 +3959,12 @@
                     if object:IsA("Script") or object:IsA("LocalScript") then
                         object:Destroy()
                     elseif object:IsA("BasePart") then
+                        cfg.part_defaults[object] = {
+                            Color = object.Color,
+                            Material = object.Material,
+                            Transparency = object.Transparency,
+                        }
+
                         object.Anchored = true
                         object.CanCollide = false
                         object.CastShadow = false
@@ -3968,9 +3979,19 @@
 
                 items["model"] = model
                 items["model"].Parent = items["world"]
+                cfg.part_defaults = {}
                 clean_model(items["model"])
 
-                items["model"]:PivotTo(cfr(0, -2.15, 0) * angle(0, rad(180), 0))
+                items["model"]:PivotTo(cfr(0, 0, 0) * angle(0, rad(180), 0))
+
+                local box_cframe, box_size = items["model"]:GetBoundingBox()
+                local model_center = box_cframe.Position
+                local target_center = vec3(0, 2.15, 0)
+                items["model"]:PivotTo(cfr(target_center - model_center) * items["model"]:GetPivot())
+
+                local camera_distance = math.max(6, box_size.Y * 1.55, box_size.X * 2.1)
+                local look_y = target_center.Y
+                items["camera"].CFrame = CFrame.lookAt(vec3(0, look_y, camera_distance), vec3(0, look_y, 0))
 
                 local humanoid = items["model"]:FindFirstChildOfClass("Humanoid")
                 if humanoid then
@@ -3983,6 +4004,16 @@
                 local model
 
                 if requested_user_id then
+                    local direct_ok, direct_model = pcall(function()
+                        return players:CreateHumanoidModelFromUserId(requested_user_id)
+                    end)
+
+                    if direct_ok and direct_model then
+                        model = direct_model
+                    end
+                end
+
+                if not model and requested_user_id then
                     local ok, description = pcall(function()
                         return players:GetHumanoidDescriptionFromUserId(requested_user_id)
                     end)
@@ -4000,7 +4031,12 @@
 
                 if not model and lp and lp.Character then
                     local clone_ok, clone = pcall(function()
-                        return lp.Character:Clone()
+                        local old_archivable = lp.Character.Archivable
+                        lp.Character.Archivable = true
+                        local character_clone = lp.Character:Clone()
+                        lp.Character.Archivable = old_archivable
+
+                        return character_clone
                     end)
 
                     if clone_ok and clone then
@@ -4094,8 +4130,15 @@
                                 object.Material = Enum.Material.ForceField
                                 object.Transparency = 0.08
                             else
-                                object.Material = Enum.Material.Plastic
-                                object.Transparency = 0
+                                local defaults = cfg.part_defaults[object]
+                                if defaults then
+                                    object.Color = defaults.Color
+                                    object.Material = defaults.Material
+                                    object.Transparency = defaults.Transparency
+                                else
+                                    object.Material = Enum.Material.Plastic
+                                    object.Transparency = 0
+                                end
                             end
                         end
                     end
