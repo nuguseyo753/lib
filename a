@@ -1,6 +1,6 @@
 --[[
 
-    Astra Library
+    Ui Library
     -> Millenium-style base with a slightly changed visual identity
     -> Adds an external ESP character preview inspired by Nhack-style feedback
 ]]
@@ -67,7 +67,7 @@
 
 -- Library init
     getgenv().library = {
-        directory = "astra",
+        directory = "ui",
         folders = {
             "/fonts",
             "/configs",
@@ -500,9 +500,9 @@
     -- Library element functions
         function library:window(properties)
             local cfg = { 
-                suffix = properties.suffix or properties.Suffix or ".gg";
-                name = properties.name or properties.Name or "astra";
-                game_name = properties.gameInfo or properties.game_info or properties.GameInfo or "Astra for Roblox";
+                suffix = properties.suffix or properties.Suffix or "";
+                name = properties.name or properties.Name or "Ui";
+                game_name = properties.gameInfo or properties.game_info or properties.GameInfo or "Ui for Roblox";
                 size = properties.size or properties.Size or dim2(0, 700, 0, 565);
                 selected_tab;
                 items = {};
@@ -534,7 +534,7 @@
                     Position = dim2(0.5, -cfg.size.X.Offset / 2, 0.5, -cfg.size.Y.Offset / 2);
                     BorderColor3 = rgb(0, 0, 0);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(14, 14, 16)
+                    BackgroundColor3 = rgb(14, 14, 14)
                 }); items[ "main" ].Position = dim2(0, items[ "main" ].AbsolutePosition.X, 0, items[ "main" ].AbsolutePosition.Y)
                 
                 library:create( "UICorner" , {
@@ -555,7 +555,7 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(0, 140, 1, -25);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(14, 14, 16)
+                    BackgroundColor3 = rgb(14, 14, 14)
                 });
                 
                 library:create( "Frame" , {
@@ -565,7 +565,7 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(0, 1, 1, 0);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(21, 21, 23)
+                    BackgroundColor3 = rgb(21, 21, 21)
                 });
                 
                 items[ "button_holder" ] = library:create( "Frame" , {
@@ -594,22 +594,38 @@
                 });
 
                 local accent = themes.preset.accent
+                items[ "title_accent" ] = library:create( "Frame" , {
+                    Parent = items[ "side_frame" ];
+                    Name = "\0";
+                    Position = dim2(0, 12, 0, 13);
+                    Size = dim2(0, 3, 0, 24);
+                    BorderSizePixel = 0;
+                    BackgroundColor3 = themes.preset.accent;
+                }); library:apply_theme(items[ "title_accent" ], "accent", "BackgroundColor3");
+
+                library:create( "UICorner" , {
+                    Parent = items[ "title_accent" ];
+                    CornerRadius = dim(0, 999)
+                });
+
                 items[ "title" ] = library:create( "TextLabel" , {
                     FontFace = fonts.font;
                     BorderColor3 = rgb(0, 0, 0);
                     Text = name;
                     Parent = items[ "side_frame" ];
                     Name = "\0";
-                    Text = string.format('<u>%s</u><font color = "rgb(255, 255, 255)">%s</font>', cfg.name, cfg.suffix);
+                    Text = cfg.name .. cfg.suffix;
                     BackgroundTransparency = 1;
                     Visible = true;
-                    Size = dim2(1, 0, 0, 42);
-                    TextColor3 = themes.preset.accent;
+                    Position = dim2(0, 24, 0, 0);
+                    Size = dim2(1, -28, 0, 50);
+                    TextColor3 = rgb(245, 245, 245);
                     BorderSizePixel = 0;
-                    RichText = true;
-                    TextSize = 20;
+                    RichText = false;
+                    TextXAlignment = Enum.TextXAlignment.Left;
+                    TextSize = 24;
                     BackgroundColor3 = rgb(255, 255, 255)
-                }); library:apply_theme(items[ "title" ], "accent", "TextColor3");
+                });
                 
                 items[ "multi_holder" ] = library:create( "Frame" , {
                     Parent = items[ "main" ];
@@ -629,7 +645,7 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, 0, 0, 1);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(21, 21, 23)
+                    BackgroundColor3 = rgb(21, 21, 21)
                 });
                 
                 items[ "shadow" ] = library:create( "ImageLabel" , {
@@ -658,7 +674,7 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, -140, 1, -81);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(14, 14, 16);
+                    BackgroundColor3 = rgb(14, 14, 14);
                     ZIndex = 2;
                 });                
 
@@ -675,7 +691,7 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, 0, 0, 25);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(23, 23, 25)
+                    BackgroundColor3 = rgb(23, 23, 23)
                 });
                 
                 library:create( "UICorner" , {
@@ -689,7 +705,7 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, 0, 0, 6);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(23, 23, 25)
+                    BackgroundColor3 = rgb(23, 23, 23)
                 });
                 
                 items[ "game" ] = library:create( "TextLabel" , {
@@ -1248,7 +1264,7 @@
                 });
                 
                 items[ "scrolling" ] = library:create( "ScrollingFrame" , {
-                    ScrollBarImageColor3 = rgb(44, 44, 46);
+                    ScrollBarImageColor3 = rgb(44, 44, 44);
                     Active = true;
                     AutomaticCanvasSize = Enum.AutomaticSize.Y;
                     ScrollBarThickness = 2;
@@ -1298,7 +1314,7 @@
                     Size = dim2(1, -2, 0, 35);
                     BorderSizePixel = 0;
                     TextSize = 16;
-                    BackgroundColor3 = rgb(22, 22, 31)
+                    BackgroundColor3 = rgb(22, 22, 22)
                 });
                 
                 library:create( "UIStroke" , {
@@ -1368,7 +1384,7 @@
                         Size = dim2(0, 36, 0, 18);
                         BorderSizePixel = 0;
                         TextSize = 14;
-                        BackgroundColor3 = rgb(58, 58, 62)
+                        BackgroundColor3 = rgb(58, 58, 58)
                     });  library:apply_theme(items[ "toggle" ], "accent", "BackgroundColor3");
                     
                     library:create( "UICorner" , {
@@ -1404,7 +1420,7 @@
                         BorderColor3 = rgb(0, 0, 0);
                         Size = dim2(0, 12, 0, 12);
                         BorderSizePixel = 0;
-                        BackgroundColor3 = rgb(86, 86, 88)
+                        BackgroundColor3 = rgb(86, 86, 86)
                     });
                     
                     library:create( "UICorner" , {
@@ -1441,9 +1457,9 @@
                 end)
 
                 function cfg.toggle_section(bool)
-                    library:tween(items[ "toggle" ], {BackgroundColor3 = bool and themes.preset.accent or rgb(58, 58, 62)}, Enum.EasingStyle.Quad)
+                    library:tween(items[ "toggle" ], {BackgroundColor3 = bool and themes.preset.accent or rgb(58, 58, 58)}, Enum.EasingStyle.Quad)
                     library:tween(items[ "toggle_outline" ], {BackgroundColor3 = bool and themes.preset.accent or rgb(50, 50, 50)}, Enum.EasingStyle.Quad)
-                    library:tween(items[ "toggle_circle" ], {BackgroundColor3 = bool and rgb(255, 255, 255) or rgb(86, 86, 88), Position = bool and dim2(1, -14, 0, 2) or dim2(0, 2, 0, 2)}, Enum.EasingStyle.Quad)
+                    library:tween(items[ "toggle_circle" ], {BackgroundColor3 = bool and rgb(255, 255, 255) or rgb(86, 86, 86), Position = bool and dim2(1, -14, 0, 2) or dim2(0, 2, 0, 2)}, Enum.EasingStyle.Quad)
                     library:tween(items[ "fade" ], {BackgroundTransparency = bool and 1 or 0.8}, Enum.EasingStyle.Quad)
                 end 
             end 
@@ -1563,7 +1579,7 @@
                             Size = dim2(0, 16, 0, 16);
                             BorderSizePixel = 0;
                             TextSize = 14;
-                            BackgroundColor3 = rgb(67, 67, 68)
+                            BackgroundColor3 = rgb(67, 67, 67)
                         }); library:apply_theme(items[ "toggle_button" ], "accent", "BackgroundColor3");
                         
                         library:create( "UICorner" , {
@@ -1670,12 +1686,12 @@
             function cfg.set(bool)
                 if cfg.type == "checkbox" then 
                     library:tween(items[ "tick" ], {Rotation = bool and 0 or 45, ImageTransparency = bool and 0 or 1})
-                    library:tween(items[ "toggle_button" ], {BackgroundColor3 = bool and themes.preset.accent or rgb(67, 67, 68)})
+                    library:tween(items[ "toggle_button" ], {BackgroundColor3 = bool and themes.preset.accent or rgb(67, 67, 67)})
                     library:tween(items[ "outline" ], {BackgroundColor3 = bool and themes.preset.accent or rgb(20, 20, 20)})
                 else
-                    library:tween(items[ "toggle_button" ], {BackgroundColor3 = bool and themes.preset.accent or rgb(58, 58, 62)}, Enum.EasingStyle.Quad)
+                    library:tween(items[ "toggle_button" ], {BackgroundColor3 = bool and themes.preset.accent or rgb(58, 58, 58)}, Enum.EasingStyle.Quad)
                     library:tween(items[ "inline" ], {BackgroundColor3 = bool and themes.preset.accent or rgb(50, 50, 50)}, Enum.EasingStyle.Quad)
-                    library:tween(items[ "circle" ], {BackgroundColor3 = bool and rgb(255, 255, 255) or rgb(86, 86, 88), Position = bool and dim2(1, -14, 0, 2) or dim2(0, 2, 0, 2)}, Enum.EasingStyle.Quad)
+                    library:tween(items[ "circle" ], {BackgroundColor3 = bool and rgb(255, 255, 255) or rgb(86, 86, 86), Position = bool and dim2(1, -14, 0, 2) or dim2(0, 2, 0, 2)}, Enum.EasingStyle.Quad)
                 end
 
                 cfg.callback(bool)
@@ -1827,7 +1843,7 @@
                     Size = dim2(1, -4, 0, 4);
                     BorderSizePixel = 0;
                     TextSize = 14;
-                    BackgroundColor3 = rgb(33, 33, 35)
+                    BackgroundColor3 = rgb(33, 33, 33)
                 });
                 
                 library:create( "UICorner" , {
@@ -2057,7 +2073,7 @@
                         Size = dim2(0, cfg.width, 0, 16);
                         BorderSizePixel = 0;
                         TextSize = 14;
-                        BackgroundColor3 = rgb(33, 33, 35)
+                        BackgroundColor3 = rgb(33, 33, 33)
                     });
                     
                     library:create( "UICorner" , {
@@ -2067,7 +2083,7 @@
                     
                     items[ "sub_text" ] = library:create( "TextLabel" , {
                         FontFace = fonts.small;
-                        TextColor3 = rgb(86, 86, 87);
+                        TextColor3 = rgb(86, 86, 86);
                         BorderColor3 = rgb(0, 0, 0);
                         Text = "awdawdawdawdawdawdawdaw";
                         Parent = items[ "dropdown" ];
@@ -2090,7 +2106,7 @@
                     });
                     
                     items[ "indicator" ] = library:create( "ImageLabel" , {
-                        ImageColor3 = rgb(86, 86, 87);
+                        ImageColor3 = rgb(86, 86, 86);
                         BorderColor3 = rgb(0, 0, 0);
                         Parent = items[ "dropdown" ];
                         AnchorPoint = vec2(1, 0.5);
@@ -2123,7 +2139,7 @@
                         ClipsDescendants = true;
                         BorderColor3 = rgb(0, 0, 0);
                         BorderSizePixel = 0;
-                        BackgroundColor3 = rgb(33, 33, 35);
+                        BackgroundColor3 = rgb(33, 33, 33);
                         ZIndex = 10;
                     });
                     
@@ -2413,7 +2429,7 @@
                         Size = dim2(0, 16, 0, 16);
                         BorderSizePixel = 0;
                         TextSize = 14;
-                        BackgroundColor3 = rgb(54, 31, 184)
+                        BackgroundColor3 = rgb(96, 255, 181)
                     });
                     
                     library:create( "UICorner" , {
@@ -2429,7 +2445,7 @@
                         BorderColor3 = rgb(0, 0, 0);
                         Position = dim2(0, 1, 0, 1);
                         BorderSizePixel = 0;
-                        BackgroundColor3 = rgb(54, 31, 184)
+                        BackgroundColor3 = rgb(96, 255, 181)
                     });
                     
                     library:create( "UICorner" , {
@@ -2706,7 +2722,7 @@
                         BorderColor3 = rgb(0, 0, 0);
                         Position = dim2(1, -8, 1, -11);
                         Size = dim2(1, -16, 0, 18);
-                        BackgroundColor3 = rgb(33, 33, 35)
+                        BackgroundColor3 = rgb(33, 33, 33)
                     }); 
                     
                     library:create( "UICorner" , {
@@ -2935,7 +2951,7 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Position = dim2(1, 0, 0, 0);
                     Size = dim2(1, -4, 0, 30);
-                    BackgroundColor3 = rgb(33, 33, 35)
+                    BackgroundColor3 = rgb(33, 33, 33)
                 }); 
 
                 library:create( "UICorner" , {
@@ -3074,7 +3090,7 @@
                         BorderSizePixel = 0;
                         AutomaticSize = Enum.AutomaticSize.X;
                         TextSize = 14;
-                        BackgroundColor3 = rgb(33, 33, 35)
+                        BackgroundColor3 = rgb(33, 33, 33)
                     });
                     
                     library:create( "UICorner" , {
@@ -3084,7 +3100,7 @@
                     
                     items[ "key" ] = library:create( "TextLabel" , {
                         FontFace = fonts.font;
-                        TextColor3 = rgb(86, 86, 87);
+                        TextColor3 = rgb(86, 86, 86);
                         BorderColor3 = rgb(0, 0, 0);
                         Text = "LSHIFT";
                         Parent = items[ "keybind_holder" ];
@@ -3347,7 +3363,7 @@
                     Size = dim2(1, -8, 0, 30);
                     BorderSizePixel = 0;
                     TextSize = 14;
-                    BackgroundColor3 = rgb(33, 33, 35)
+                    BackgroundColor3 = rgb(33, 33, 33)
                 });
                 
                 library:create( "UICorner" , {
@@ -3530,7 +3546,7 @@
                         Size = dim2(1, 0, 0, 30);
                         BorderSizePixel = 0;
                         TextSize = 14;
-                        BackgroundColor3 = rgb(33, 33, 35)
+                        BackgroundColor3 = rgb(33, 33, 33)
                     }); cfg.data_store[#cfg.data_store + 1] = button;
 
                     local name = library:create( "TextLabel" , {
@@ -3661,7 +3677,7 @@
                     BackgroundTransparency = 1;
                     AnchorPoint = vec2(1, 0);
                     AutomaticSize = Enum.AutomaticSize.Y;
-                    BackgroundColor3 = rgb(14, 14, 16)
+                    BackgroundColor3 = rgb(14, 14, 14)
                 });
                 
                 library:create( "UIStroke" , {
@@ -3780,6 +3796,8 @@
                 enabled = properties.enabled ~= false and properties.Enabled ~= false,
                 tab_visible = string.find(string.lower(library.current_tab_name or ""), "visual") ~= nil,
                 part_defaults = {},
+                skeleton_rods = {},
+                model_spin = 0,
                 items = {},
             }
 
@@ -3942,33 +3960,6 @@
                 ZIndex = 4;
             }); library:apply_theme(items["tracer"], "accent", "BackgroundColor3")
 
-            local function skeleton_line(name, position, size, rotation)
-                items[name] = library:create("Frame", {
-                    Parent = items["stage"];
-                    Name = "\0";
-                    AnchorPoint = vec2(0.5, 0.5);
-                    Position = position;
-                    Size = size;
-                    Rotation = rotation or 0;
-                    BorderSizePixel = 0;
-                    BackgroundColor3 = themes.preset.accent;
-                    Visible = false;
-                    ZIndex = 5;
-                }); library:apply_theme(items[name], "accent", "BackgroundColor3")
-
-                return items[name]
-            end
-
-            items["skeleton_lines"] = {
-                skeleton_line("skeleton_spine", dim2(0.5, 0, 0, 172), dim_offset(2, 116), 0),
-                skeleton_line("skeleton_shoulders", dim2(0.5, 0, 0, 122), dim_offset(112, 2), 0),
-                skeleton_line("skeleton_left_arm", dim2(0.5, -54, 0, 160), dim_offset(2, 92), -30),
-                skeleton_line("skeleton_right_arm", dim2(0.5, 54, 0, 160), dim_offset(2, 92), 30),
-                skeleton_line("skeleton_hips", dim2(0.5, 0, 0, 230), dim_offset(84, 2), 0),
-                skeleton_line("skeleton_left_leg", dim2(0.5, -34, 0, 287), dim_offset(2, 112), 18),
-                skeleton_line("skeleton_right_leg", dim2(0.5, 34, 0, 287), dim_offset(2, 112), -18),
-            }
-
             items["viewport"] = library:create("ViewportFrame", {
                 Parent = items["stage"];
                 Name = "\0";
@@ -3989,6 +3980,78 @@
             items["camera"].CFrame = CFrame.lookAt(vec3(0, 2.2, 7), vec3(0, 2.2, 0))
             items["camera"].Parent = items["viewport"]
             items["viewport"].CurrentCamera = items["camera"]
+
+            local skeleton_segments = {
+                {{"Head"}, {"UpperTorso", "Torso"}},
+                {{"UpperTorso", "Torso"}, {"LowerTorso", "Torso"}},
+                {{"UpperTorso", "Torso"}, {"LeftUpperArm", "Left Arm"}},
+                {{"LeftUpperArm", "Left Arm"}, {"LeftLowerArm", "Left Arm"}},
+                {{"LeftLowerArm", "Left Arm"}, {"LeftHand", "Left Arm"}},
+                {{"UpperTorso", "Torso"}, {"RightUpperArm", "Right Arm"}},
+                {{"RightUpperArm", "Right Arm"}, {"RightLowerArm", "Right Arm"}},
+                {{"RightLowerArm", "Right Arm"}, {"RightHand", "Right Arm"}},
+                {{"LowerTorso", "Torso"}, {"LeftUpperLeg", "Left Leg"}},
+                {{"LeftUpperLeg", "Left Leg"}, {"LeftLowerLeg", "Left Leg"}},
+                {{"LeftLowerLeg", "Left Leg"}, {"LeftFoot", "Left Leg"}},
+                {{"LowerTorso", "Torso"}, {"RightUpperLeg", "Right Leg"}},
+                {{"RightUpperLeg", "Right Leg"}, {"RightLowerLeg", "Right Leg"}},
+                {{"RightLowerLeg", "Right Leg"}, {"RightFoot", "Right Leg"}},
+            }
+
+            local function get_body_part(names)
+                if not items["model"] then
+                    return
+                end
+
+                for _, part_name in names do
+                    local part = items["model"]:FindFirstChild(part_name, true)
+                    if part and part:IsA("BasePart") then
+                        return part
+                    end
+                end
+            end
+
+            local function get_skeleton_rod(index)
+                if cfg.skeleton_rods[index] then
+                    return cfg.skeleton_rods[index]
+                end
+
+                local rod = Instance.new("Part")
+                rod.Name = "\0"
+                rod.Anchored = true
+                rod.CanCollide = false
+                rod.CastShadow = false
+                rod.Material = Enum.Material.Neon
+                rod.Shape = Enum.PartType.Cylinder
+                rod.Size = vec3(0.045, 0.045, 1)
+                rod.Transparency = 1
+                rod.Parent = items["world"]
+                cfg.skeleton_rods[index] = rod
+
+                return rod
+            end
+
+            local function update_skeleton(accent, visible)
+                for index, segment in skeleton_segments do
+                    local rod = get_skeleton_rod(index)
+                    local from = get_body_part(segment[1])
+                    local to = get_body_part(segment[2])
+
+                    if visible and from and to then
+                        local from_pos = from.Position
+                        local to_pos = to.Position
+                        local distance = (to_pos - from_pos).Magnitude
+                        local midpoint = from_pos:Lerp(to_pos, 0.5)
+
+                        rod.Color = accent
+                        rod.Size = vec3(0.045, distance, 0.045)
+                        rod.CFrame = CFrame.lookAt(midpoint, to_pos) * angle(rad(90), 0, 0)
+                        rod.Transparency = 0.08
+                    else
+                        rod.Transparency = 1
+                    end
+                end
+            end
 
             local function clean_model(model)
                 for _, object in model:GetDescendants() do
@@ -4024,6 +4087,8 @@
                 local model_center = box_cframe.Position
                 local target_center = vec3(0, 2.35, 0)
                 items["model"]:PivotTo(cfr(target_center - model_center) * items["model"]:GetPivot())
+                cfg.model_base_cframe = items["model"]:GetPivot()
+                cfg.model_spin = 0
 
                 local camera_distance = math.max(4.35, box_size.Y * 1.08, box_size.X * 1.55)
                 local look_y = target_center.Y
@@ -4165,12 +4230,12 @@
                 items["tracer"].BackgroundColor3 = accent
                 items["name"].TextColor3 = accent
 
-                for _, line in items["skeleton_lines"] do
-                    line.Visible = skeleton
-                    line.BackgroundColor3 = accent
-                end
-
                 if items["model"] then
+                    if cfg.model_base_cframe then
+                        cfg.model_spin = (cfg.model_spin + 0.006) % 6.283
+                        items["model"]:PivotTo(cfg.model_base_cframe * angle(0, cfg.model_spin, 0))
+                    end
+
                     for _, object in items["model"]:GetDescendants() do
                         if object:IsA("BasePart") then
                             if chams then
@@ -4191,6 +4256,8 @@
                         end
                     end
                 end
+
+                update_skeleton(accent, skeleton)
             end
 
             library:connection(run.RenderStepped, function()
