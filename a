@@ -448,6 +448,91 @@
             themes.preset[theme] = color 
         end 
 
+        function library:tooltip(target, text)
+            if not target or not text or text == "" then
+                return
+            end
+
+            local function ensure()
+                if library.tooltip_items then
+                    return library.tooltip_items
+                end
+
+                local holder = library:create("Frame", {
+                    Parent = library.other or library.items;
+                    Name = "\0";
+                    Visible = false;
+                    BackgroundColor3 = rgb(18, 18, 18);
+                    BorderSizePixel = 0;
+                    AutomaticSize = Enum.AutomaticSize.XY;
+                    ZIndex = 200;
+                })
+
+                library:create("UICorner", {
+                    Parent = holder;
+                    CornerRadius = dim(0, 6);
+                })
+
+                library:create("UIStroke", {
+                    Parent = holder;
+                    ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
+                    Color = rgb(55, 55, 55);
+                })
+
+                library:create("UIPadding", {
+                    Parent = holder;
+                    PaddingTop = dim(0, 7);
+                    PaddingBottom = dim(0, 7);
+                    PaddingLeft = dim(0, 9);
+                    PaddingRight = dim(0, 9);
+                })
+
+                local label = library:create("TextLabel", {
+                    Parent = holder;
+                    Name = "\0";
+                    BackgroundTransparency = 1;
+                    BorderSizePixel = 0;
+                    AutomaticSize = Enum.AutomaticSize.Y;
+                    FontFace = fonts.small;
+                    TextSize = 14;
+                    TextWrapped = true;
+                    TextXAlignment = Enum.TextXAlignment.Left;
+                    TextColor3 = rgb(220, 220, 220);
+                    Size = dim2(0, 220, 0, 0);
+                    Text = "";
+                    ZIndex = 201;
+                })
+
+                library.tooltip_items = {
+                    holder = holder,
+                    label = label,
+                }
+
+                return library.tooltip_items
+            end
+
+            local function move(x, y)
+                local tip = ensure()
+                tip.holder.Position = dim_offset(x + 14, y + 12)
+            end
+
+            target.MouseEnter:Connect(function()
+                local tip = ensure()
+                tip.label.Text = text
+                tip.holder.Visible = true
+                if library.other then
+                    library.other.Enabled = true
+                end
+            end)
+
+            target.MouseMoved:Connect(move)
+
+            target.MouseLeave:Connect(function()
+                local tip = ensure()
+                tip.holder.Visible = false
+            end)
+        end 
+
         function library:connection(signal, callback)
             local connection = signal:Connect(callback)
             
@@ -572,9 +657,9 @@
                     Parent = items[ "side_frame" ];
                     Name = "\0";
                     BackgroundTransparency = 1;
-                    Position = dim2(0, 0, 0, 46);
+                    Position = dim2(0, 0, 0, 64);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, 0, 1, -46);
+                    Size = dim2(1, 0, 1, -64);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(255, 255, 255)
                 }); cfg.button_holder = items[ "button_holder" ];
@@ -586,7 +671,7 @@
                 });
                 
                 library:create( "UIPadding" , {
-                    PaddingTop = dim(0, 8);
+                    PaddingTop = dim(0, 10);
                     PaddingBottom = dim(0, 16);
                     Parent = items[ "button_holder" ];
                     PaddingRight = dim(0, 10);
@@ -597,7 +682,7 @@
                 items[ "title_accent" ] = library:create( "Frame" , {
                     Parent = items[ "side_frame" ];
                     Name = "\0";
-                    Position = dim2(0, 12, 0, 13);
+                    Position = dim2(0, 12, 0, 19);
                     Size = dim2(0, 3, 0, 24);
                     BorderSizePixel = 0;
                     BackgroundColor3 = themes.preset.accent;
@@ -617,8 +702,8 @@
                     Text = cfg.name .. cfg.suffix;
                     BackgroundTransparency = 1;
                     Visible = true;
-                    Position = dim2(0, 24, 0, 0);
-                    Size = dim2(1, -28, 0, 50);
+                    Position = dim2(0, 24, 0, 6);
+                    Size = dim2(1, -28, 0, 54);
                     TextColor3 = rgb(245, 245, 245);
                     BorderSizePixel = 0;
                     RichText = false;
@@ -771,6 +856,7 @@
             local cfg = {
                 name = properties.name or properties.Name or "visuals"; 
                 icon = properties.icon or properties.Icon or "http://www.roblox.com/asset/?id=6034767608";
+                group = properties.group or properties.Group;
                 
                 -- multi 
                 tabs = properties.tabs or properties.Tabs or {"Main", "Misc.", "Settings"};
@@ -779,6 +865,20 @@
                 
                 items = {};
             } 
+
+            if cfg.group ~= false then
+                local group_name = cfg.group
+                if not group_name then
+                    local lower_name = string.lower(cfg.name)
+                    group_name = (string.find(lower_name, "setting") or string.find(lower_name, "config")) and "Settings" or "General"
+                end
+
+                self.__tab_groups = self.__tab_groups or {}
+                if group_name and not self.__tab_groups[group_name] and self.seperator then
+                    self:seperator({name = group_name})
+                    self.__tab_groups[group_name] = true
+                end
+            end
 
             local items = cfg.items; do 
                 items[ "tab_holder" ] = library:create( "Frame" , {
@@ -857,7 +957,7 @@
                         Name = "\0";
                         AnchorPoint = vec2(0, 0.5);
                         Position = dim2(0, 0, 0.5, 0);
-                        Size = dim2(0, 2, 1, -12);
+                        Size = dim2(0, 2, 0, 0);
                         BorderSizePixel = 0;
                         BackgroundTransparency = 1;
                         BackgroundColor3 = themes.preset.accent;
@@ -1021,8 +1121,8 @@
 							local page = cfg.current_multi; 
                             
                             if page and page.text ~= data.text then 
-                                self.items[ "global_fade" ].BackgroundTransparency = 0
-                                library:tween(self.items[ "global_fade" ], {BackgroundTransparency = 1}, Enum.EasingStyle.Quad, 0.4)
+                                self.items[ "global_fade" ].BackgroundTransparency = 0.18
+                                library:tween(self.items[ "global_fade" ], {BackgroundTransparency = 1}, Enum.EasingStyle.Quart, 0.34)
                                 
                                 local old_size = page.page.Size
                                 page.page.Size = dim2(1, -20, 1, -20)
@@ -1040,7 +1140,8 @@
                             library:tween(data.text, {TextColor3 = rgb(255, 255, 255)})
                             library:tween(data.accent, {BackgroundTransparency = 0})
                             library:tween(data.button, {BackgroundTransparency = 0})
-                            library:tween(data.page, {Size = dim2(1, 0, 1, 0)}, Enum.EasingStyle.Quad, 0.4)
+                            data.page.Size = dim2(1, -14, 1, -14)
+                            library:tween(data.page, {Size = dim2(1, 0, 1, 0)}, Enum.EasingStyle.Quart, 0.34)
 
                             data.page.Visible = true
                             data.page.Parent = items["tab_holder"]
@@ -1064,11 +1165,11 @@
             function cfg.open_tab() 
                 local selected_tab = self.selected_tab
                 
-                if selected_tab then 
-                    if selected_tab[ 4 ] ~= items[ "tab_holder" ] then 
-                        self.items[ "global_fade" ].BackgroundTransparency = 0
+                    if selected_tab then 
+                        if selected_tab[ 4 ] ~= items[ "tab_holder" ] then 
+                        self.items[ "global_fade" ].BackgroundTransparency = 0.18
                         
-                        library:tween(self.items[ "global_fade" ], {BackgroundTransparency = 1}, Enum.EasingStyle.Quad, 0.4)
+                        library:tween(self.items[ "global_fade" ], {BackgroundTransparency = 1}, Enum.EasingStyle.Quart, 0.34)
                         selected_tab[ 4 ].Size = dim2(1, -160, 1, -101)
                     end
 
@@ -1077,6 +1178,7 @@
                     library:tween(selected_tab[ 3 ], {TextColor3 = rgb(130, 130, 130)})
                     if selected_tab[ 6 ] then
                         library:tween(selected_tab[ 6 ], {BackgroundTransparency = 1})
+                        library:tween(selected_tab[ 6 ], {Size = dim2(0, 2, 0, 0)}, Enum.EasingStyle.Quart, 0.28)
                     end
 
                     selected_tab[ 4 ].Visible = false
@@ -1088,8 +1190,8 @@
                 library:tween(items[ "button" ], {BackgroundTransparency = 0.15})
                 library:tween(items[ "icon" ], {ImageColor3 = rgb(255, 255, 255)})
                 library:tween(items[ "name" ], {TextColor3 = rgb(255, 255, 255)})
-                library:tween(items[ "active_line" ], {BackgroundTransparency = 0})
-                library:tween(items[ "tab_holder" ], {Size = dim2(1, -140, 1, -81)}, Enum.EasingStyle.Quad, 0.4)
+                library:tween(items[ "active_line" ], {BackgroundTransparency = 0, Size = dim2(0, 2, 1, -12)}, Enum.EasingStyle.Quart, 0.32)
+                library:tween(items[ "tab_holder" ], {Size = dim2(1, -140, 1, -81)}, Enum.EasingStyle.Quart, 0.34)
                 
                 items[ "tab_holder" ].Visible = true 
                 items[ "tab_holder" ].Parent = self.items[ "main" ]
@@ -1724,6 +1826,7 @@
                 });
             end
 
+            library:tooltip(items[ "toggle" ], cfg.info)
             cfg.set(cfg.default)
 
             config_flags[cfg.flag] = cfg.set
@@ -1951,6 +2054,7 @@
                 });
             end 
 
+            library:tooltip(items[ "slider_object" ], cfg.info)
             cfg.set(cfg.default)
             config_flags[cfg.flag] = cfg.set
 
@@ -2277,6 +2381,7 @@
             config_flags[cfg.flag] = cfg.set
             
             cfg.refresh_options(cfg.options)
+            library:tooltip(items[ "dropdown_object" ], cfg.info)
             cfg.set(cfg.default)
                 
             return setmetatable(cfg, library)
@@ -2381,6 +2486,7 @@
                 });
             end 
 
+            library:tooltip(items[ "label" ], cfg.info)
             return setmetatable(cfg, library)
         end 
         
@@ -2388,6 +2494,7 @@
             local cfg = {
                 name = options.name or "Color", 
                 flag = options.flag or library:next_flag(),
+                info = options.info or nil,
 
                 color = options.color or color(1, 1, 1), -- Default to white color if not provided
                 alpha = options.alpha and 1 - options.alpha or 0,
@@ -2860,6 +2967,7 @@
             
             cfg.set(cfg.color, cfg.alpha)
             config_flags[cfg.flag] = cfg.set
+            library:tooltip(label and label.items.label or items[ "colorpicker" ], cfg.info)
 
             return setmetatable(cfg, library)
         end 
@@ -2867,6 +2975,7 @@
         function library:textbox(options) 
             local cfg = {
                 name = options.name or "TextBox",
+                info = options.info or nil,
                 placeholder = options.placeholder or options.placeholdertext or options.holder or options.holdertext or "type here...",
                 default = options.default or "",
                 flag = options.flag or library:next_flag(),
@@ -2990,6 +3099,7 @@
             end
 
             config_flags[cfg.flag] = cfg.set
+            library:tooltip(items[ "textbox" ], cfg.info)
 
             return setmetatable(cfg, library)
         end
@@ -2999,6 +3109,7 @@
                 flag = options.flag or library:next_flag(),
                 callback = options.callback or function() end,
                 name = options.name or nil, 
+                info = options.info or nil,
                 ignore_key = options.ignore or false, 
 
                 key = options.key or nil, 
@@ -3326,6 +3437,7 @@
             
             cfg.set({mode = cfg.mode, active = cfg.active, key = cfg.key})           
             config_flags[cfg.flag] = cfg.set
+            library:tooltip(items[ "keybind_element" ], cfg.info)
 
             return setmetatable(cfg, library)
         end
@@ -3333,6 +3445,7 @@
         function library:button(options) 
             local cfg = {
                 name = options.name or "TextBox",
+                info = options.info or nil,
                 callback = options.callback or function() end,
                 items = {};
             }
@@ -3392,6 +3505,8 @@
                 items[ "name" ].TextColor3 = themes.preset.accent 
                 library:tween(items[ "name" ], {TextColor3 = rgb(245, 245, 245)})
             end)
+
+            library:tooltip(items[ "button" ], cfg.info)
             
             return setmetatable(cfg, library)
         end 
@@ -3604,7 +3719,6 @@
         end 
 
         function library:init_config(window) 
-            window:seperator({name = "Settings"})
             local main = window:tab({name = "Configs", tabs = {"Main"}})
             
             local column = main:column({})
@@ -3617,8 +3731,8 @@
             section:button({name = "Save", callback = function() writefile(library.directory .. "/configs/" .. flags["config_name_text"] or flags["config_name_list"] .. ".cfg", library:get_config()) library:update_config_list() notifications:create_notification({name = "Configs", info = "Saved config to:\n" .. flags["config_name_list"] or flags["config_name_text"]}) end}) 
             section:button({name = "Load", callback = function() library:load_config(readfile(library.directory .. "/configs/" .. flags["config_name_list"] .. ".cfg"))  library:update_config_list() notifications:create_notification({name = "Configs", info = "Loaded config:\n" .. flags["config_name_list"]}) end})
             section:button({name = "Delete", callback = function() delfile(library.directory .. "/configs/" .. flags["config_name_list"] .. ".cfg")  library:update_config_list() notifications:create_notification({name = "Configs", info = "Deleted config:\n" .. flags["config_name_list"]}) end})
-            section:colorpicker({name = "Menu Accent", callback = function(color, alpha) library:update_theme("accent", color) end, color = themes.preset.accent})
-            section:keybind({name = "Menu Bind", key = Enum.KeyCode.Insert, callback = function(bool) window.toggle_menu(bool) end, default = true})
+            section:colorpicker({name = "Theme Color", info = "Changes the menu accent color.", callback = function(color, alpha) library:update_theme("accent", color) end, color = themes.preset.accent})
+            section:keybind({name = "Menu Bind", info = "Sets the key used to show or hide the menu.", key = Enum.KeyCode.Insert, callback = function(bool) window.toggle_menu(bool) end, default = true})
         end
     --
 
