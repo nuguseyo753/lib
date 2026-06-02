@@ -3797,7 +3797,8 @@
                 tab_visible = string.find(string.lower(library.current_tab_name or ""), "visual") ~= nil,
                 part_defaults = {},
                 skeleton_rods = {},
-                model_spin = 0,
+                model_rotation = properties.rotation or properties.Rotation or 0,
+                rotating_model = false,
                 items = {},
             }
 
@@ -3828,6 +3829,7 @@
             items["header"] = library:create("Frame", {
                 Parent = items["main"];
                 Name = "\0";
+                Active = true;
                 Size = dim2(1, 0, 0, 48);
                 BorderSizePixel = 0;
                 BackgroundColor3 = rgb(18, 18, 18);
@@ -3963,6 +3965,7 @@
             items["viewport"] = library:create("ViewportFrame", {
                 Parent = items["stage"];
                 Name = "\0";
+                Active = true;
                 Position = dim2(0.5, -145, 0, 28);
                 Size = dim_offset(290, 342);
                 BackgroundTransparency = 1;
@@ -4031,6 +4034,39 @@
                 return rod
             end
 
+            local function get_head_dot()
+                if cfg.head_dot then
+                    return cfg.head_dot
+                end
+
+                local dot = Instance.new("Part")
+                dot.Name = "\0"
+                dot.Anchored = true
+                dot.CanCollide = false
+                dot.CastShadow = false
+                dot.Material = Enum.Material.Neon
+                dot.Shape = Enum.PartType.Ball
+                dot.Size = vec3(0.16, 0.16, 0.16)
+                dot.Transparency = 1
+                dot.Parent = items["world"]
+                cfg.head_dot = dot
+
+                return dot
+            end
+
+            local function update_head_dot(accent, visible)
+                local dot = get_head_dot()
+                local head = get_body_part({"Head"})
+
+                if visible and head then
+                    dot.Color = accent
+                    dot.CFrame = cfr(head.Position + vec3(0, 0.05, 0))
+                    dot.Transparency = 0
+                else
+                    dot.Transparency = 1
+                end
+            end
+
             local function update_skeleton(accent, visible)
                 for index, segment in skeleton_segments do
                     local rod = get_skeleton_rod(index)
@@ -4043,10 +4079,14 @@
                         local distance = (to_pos - from_pos).Magnitude
                         local midpoint = from_pos:Lerp(to_pos, 0.5)
 
-                        rod.Color = accent
-                        rod.Size = vec3(0.045, distance, 0.045)
-                        rod.CFrame = CFrame.lookAt(midpoint, to_pos) * angle(rad(90), 0, 0)
-                        rod.Transparency = 0.08
+                        if distance > 0.04 then
+                            rod.Color = accent
+                            rod.Size = vec3(0.045, distance, 0.045)
+                            rod.CFrame = CFrame.lookAt(midpoint, to_pos) * angle(rad(90), 0, 0)
+                            rod.Transparency = 0.08
+                        else
+                            rod.Transparency = 1
+                        end
                     else
                         rod.Transparency = 1
                     end
@@ -4088,7 +4128,7 @@
                 local target_center = vec3(0, 2.35, 0)
                 items["model"]:PivotTo(cfr(target_center - model_center) * items["model"]:GetPivot())
                 cfg.model_base_cframe = items["model"]:GetPivot()
-                cfg.model_spin = 0
+                cfg.model_rotation = cfg.model_rotation or 0
 
                 local camera_distance = math.max(4.35, box_size.Y * 1.08, box_size.X * 1.55)
                 local look_y = target_center.Y
@@ -4176,7 +4216,72 @@
                 TextXAlignment = Enum.TextXAlignment.Left;
             })
 
-            library:draggify(items["main"])
+            local function apply_model_rotation()
+                if items["model"] and cfg.model_base_cframe then
+                    items["model"]:PivotTo(cfg.model_base_cframe * angle(0, cfg.model_rotation, 0))
+                end
+            end
+
+            items["viewport"].InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    cfg.rotating_model = true
+                    cfg.rotate_start = input.Position.X
+                    cfg.rotate_origin = cfg.model_rotation
+                end
+            end)
+
+            library:connection(uis.InputChanged, function(input)
+                if cfg.rotating_model and input.UserInputType == Enum.UserInputType.MouseMovement then
+                    cfg.model_rotation = cfg.rotate_origin + ((input.Position.X - cfg.rotate_start) * 0.012)
+                    apply_model_rotation()
+                end
+            end)
+
+            library:connection(uis.InputEnded, function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    cfg.rotating_model = false
+                end
+            end)
+
+            local function drag_panel(handle, target)
+                local dragging = false
+                local start_position
+                local start_input
+
+                handle.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        if target.Position.X.Scale ~= 0 or target.Position.Y.Scale ~= 0 then
+                            target.Position = dim2(0, target.AbsolutePosition.X, 0, target.AbsolutePosition.Y)
+                        end
+
+                        dragging = true
+                        start_position = target.Position
+                        start_input = input.Position
+                    end
+                end)
+
+                handle.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        dragging = false
+                    end
+                end)
+
+                library:connection(uis.InputChanged, function(input)
+                    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                        local viewport_x = camera.ViewportSize.X
+                        local viewport_y = camera.ViewportSize.Y
+
+                        target.Position = dim2(
+                            0,
+                            clamp(start_position.X.Offset + (input.Position.X - start_input.X), 0, viewport_x - target.Size.X.Offset),
+                            0,
+                            clamp(start_position.Y.Offset + (input.Position.Y - start_input.Y), 0, viewport_y - target.Size.Y.Offset)
+                        )
+                    end
+                end)
+            end
+
+            drag_panel(items["header"], items["main"])
 
             function cfg.flag_enabled()
                 local lower_flag = string.lower(cfg.flag)
@@ -4208,6 +4313,7 @@
                 local distance = esp and flags["distance"] == true
                 local tracer = esp and (flags["tracers"] == true or flags["tracer"] == true)
                 local skeleton = esp and flags["skeleton"] == true
+                local head_dot = esp and (flags["head_dot"] == true or flags["headdot"] == true)
                 local chams = esp and (flags["enemy_chams"] == true or flags["chams"] == true)
                 local accent = themes.preset.accent
                 local color_flag = flags["enemy_color"]
@@ -4232,8 +4338,7 @@
 
                 if items["model"] then
                     if cfg.model_base_cframe then
-                        cfg.model_spin = (cfg.model_spin + 0.006) % 6.283
-                        items["model"]:PivotTo(cfg.model_base_cframe * angle(0, cfg.model_spin, 0))
+                        apply_model_rotation()
                     end
 
                     for _, object in items["model"]:GetDescendants() do
@@ -4258,6 +4363,7 @@
                 end
 
                 update_skeleton(accent, skeleton)
+                update_head_dot(accent, head_dot)
             end
 
             library:connection(run.RenderStepped, function()
