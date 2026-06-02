@@ -3793,6 +3793,7 @@
                 health = properties.health or properties.Health or 76,
                 flag = properties.flag or properties.Flag or "esp",
                 enabled = properties.enabled ~= false and properties.Enabled ~= false,
+                settings = properties.settings or properties.Settings,
                 tab_visible = string.find(string.lower(library.current_tab_name or ""), "visual") ~= nil,
                 part_defaults = {},
                 skeleton_rods = {},
@@ -4018,6 +4019,16 @@
                     return cfg.skeleton_rods[index]
                 end
 
+                local outline = library:create("Frame", {
+                    Parent = items["stage"];
+                    Name = "\0";
+                    AnchorPoint = vec2(0.5, 0.5);
+                    BorderSizePixel = 0;
+                    BackgroundColor3 = rgb(0, 0, 0);
+                    Visible = false;
+                    ZIndex = 29;
+                })
+
                 local line = library:create("Frame", {
                     Parent = items["stage"];
                     Name = "\0";
@@ -4028,8 +4039,12 @@
                     ZIndex = 30;
                 })
 
-                cfg.skeleton_rods[index] = line
-                return line
+                cfg.skeleton_rods[index] = {
+                    outline = outline,
+                    line = line,
+                }
+
+                return cfg.skeleton_rods[index]
             end
 
             local function get_head_dot()
@@ -4067,6 +4082,14 @@
                 library:create("UICorner", {
                     Parent = dot;
                     CornerRadius = dim(0, 999);
+                })
+
+                cfg.head_dot_stroke = library:create("UIStroke", {
+                    Parent = dot;
+                    ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
+                    Color = themes.preset.accent;
+                    Thickness = 2;
+                    Enabled = false;
                 })
 
                 cfg.head_dot_outline = outline
@@ -4107,36 +4130,59 @@
                 return point + vec2(offset.X, offset.Y)
             end
 
-            local function update_head_dot(accent, visible)
+            local function update_head_dot(accent, visible, style)
                 local dot = get_head_dot()
                 local outline = cfg.head_dot_outline
+                local stroke = cfg.head_dot_stroke
                 local head = get_body_part({"Head"})
                 local point, on_screen = project_part(head)
+                local radius = clamp(style.size or 3, 1, 30)
+                local diameter = radius * 2
+                local outline_thickness = clamp(style.outline_thickness or 2, 1, 12)
+                local filled = style.filled ~= false
 
                 if visible and point and on_screen then
                     point = viewport_to_stage(point)
                     if outline then
+                        outline.Size = dim_offset(diameter + (outline_thickness * 2), diameter + (outline_thickness * 2))
+                        outline.BackgroundColor3 = style.outline_color or rgb(0, 0, 0)
                         outline.Position = dim_offset(point.X, point.Y)
-                        outline.Visible = true
+                        outline.Visible = style.outline == true and filled
                     end
+
+                    if stroke then
+                        stroke.Color = accent
+                        stroke.Thickness = outline_thickness
+                        stroke.Enabled = not filled
+                    end
+
                     dot.BackgroundColor3 = accent
+                    dot.BackgroundTransparency = filled and 0 or 1
                     dot.Position = dim_offset(point.X, point.Y)
+                    dot.Size = dim_offset(diameter, diameter)
                     dot.Visible = true
                 else
                     if outline then
                         outline.Visible = false
                     end
+                    if stroke then
+                        stroke.Enabled = false
+                    end
                     dot.Visible = false
                 end
             end
 
-            local function update_skeleton(accent, visible)
+            local function update_skeleton(accent, visible, style)
                 for index, segment in skeleton_segments do
-                    local line = get_skeleton_line(index)
+                    local rod = get_skeleton_line(index)
+                    local line = rod.line
+                    local outline = rod.outline
                     local from = get_body_part(segment[1])
                     local to = get_body_part(segment[2])
                     local from_point, from_visible = project_part(from)
                     local to_point, to_visible = project_part(to)
+                    local thickness = clamp(style.thickness or 2, 1, 12)
+                    local outline_thickness = clamp(style.outline_thickness or 2, 1, 12)
 
                     if visible and from_point and to_point and from_visible and to_visible then
                         from_point = viewport_to_stage(from_point)
@@ -4145,15 +4191,29 @@
                         local length = delta.Magnitude
 
                         if length > 2 then
+                            if outline then
+                                outline.BackgroundColor3 = style.outline_color or rgb(0, 0, 0)
+                                outline.Position = dim_offset((from_point.X + to_point.X) / 2, (from_point.Y + to_point.Y) / 2)
+                                outline.Size = dim_offset(length, thickness + (outline_thickness * 2))
+                                outline.Rotation = math.deg(math.atan(delta.Y, delta.X))
+                                outline.Visible = style.outline == true
+                            end
+
                             line.BackgroundColor3 = accent
                             line.Position = dim_offset((from_point.X + to_point.X) / 2, (from_point.Y + to_point.Y) / 2)
-                            line.Size = dim_offset(length, 2)
+                            line.Size = dim_offset(length, thickness)
                             line.Rotation = math.deg(math.atan(delta.Y, delta.X))
                             line.Visible = true
                         else
+                            if outline then
+                                outline.Visible = false
+                            end
                             line.Visible = false
                         end
                     else
+                        if outline then
+                            outline.Visible = false
+                        end
                         line.Visible = false
                     end
                 end
@@ -4372,15 +4432,34 @@
             cfg.refresh_visible()
 
             function cfg.update()
+                local settings = cfg.settings
+                local function pick_setting(name, fallback)
+                    if settings and settings[name] ~= nil then
+                        return settings[name]
+                    end
+
+                    return fallback
+                end
+
+                local function pick_color(name, fallback)
+                    local value = settings and settings[name]
+
+                    if typeof(value) == "Color3" then
+                        return value
+                    end
+
+                    return fallback
+                end
+
                 local esp = cfg.flag_enabled()
-                local box = esp and flags["box"] ~= false
-                local name = esp and flags["name"] ~= false
-                local health = esp and (flags["health_bar"] ~= false and flags["healthbar"] ~= false)
-                local distance = esp and flags["distance"] == true
-                local tracer = esp and (flags["tracers"] == true or flags["tracer"] == true)
-                local skeleton = esp and flags["skeleton"] == true
-                local head_dot = esp and (flags["head_dot"] == true or flags["headdot"] == true)
-                local chams = esp and (flags["enemy_chams"] == true or flags["chams"] == true)
+                local box = esp and pick_setting("BoxEnabled", flags["box"] ~= false or flags["esp_box"] == true)
+                local name = esp and pick_setting("NameEnabled", flags["name"] ~= false or flags["esp_name"] == true)
+                local health = esp and pick_setting("HealthBarEnabled", flags["health_bar"] ~= false or flags["healthbar"] ~= false or flags["esp_health"] == true)
+                local distance = esp and pick_setting("DistanceEnabled", flags["distance"] == true or flags["esp_distance"] == true)
+                local tracer = esp and pick_setting("SnaplineEnabled", flags["tracers"] == true or flags["tracer"] == true or flags["esp_snaplines"] == true)
+                local skeleton = esp and pick_setting("SkeletonEnabled", flags["skeleton"] == true or flags["esp_skeleton"] == true)
+                local head_dot = esp and pick_setting("HeadDotEnabled", flags["head_dot"] == true or flags["headdot"] == true or flags["esp_head_dot"] == true)
+                local chams = esp and pick_setting("HighlightEnabled", flags["enemy_chams"] == true or flags["chams"] == true or flags["esp_highlight"] == true)
                 local accent = themes.preset.accent
                 local color_flag = flags["enemy_color"]
 
@@ -4390,6 +4469,29 @@
                     accent = color_flag.Color
                 end
 
+                local box_color = pick_color("BoxColor", accent)
+                local name_color = pick_color("NameColor", accent)
+                local health_color = pick_color("HealthColor", accent)
+                local distance_color = pick_color("DistanceColor", accent)
+                local tracer_color = pick_color("SnaplineColor", accent)
+                local skeleton_color = pick_color("SkeletonColor", accent)
+                local head_dot_color = pick_color("HeadDotColor", accent)
+                local chams_color = pick_color("HighlightFillColor", accent)
+                local box_thickness = clamp(pick_setting("BoxThickness", 1), 1, 12)
+                local skeleton_style = {
+                    thickness = pick_setting("SkeletonThickness", 2),
+                    outline = pick_setting("SkeletonOutlineEnabled", true),
+                    outline_color = pick_color("SkeletonOutlineColor", rgb(0, 0, 0)),
+                    outline_thickness = pick_setting("OutlineThickness", 2),
+                }
+                local head_dot_style = {
+                    size = pick_setting("HeadDotSize", 3),
+                    filled = pick_setting("HeadDotFilled", true),
+                    outline = pick_setting("HeadDotOutlineEnabled", true),
+                    outline_color = pick_color("HeadDotOutlineColor", rgb(0, 0, 0)),
+                    outline_thickness = pick_setting("OutlineThickness", 2),
+                }
+
                 items["box"].Visible = box
                 items["name"].Visible = name
                 items["health_back"].Visible = health
@@ -4397,10 +4499,12 @@
                 items["tracer"].Visible = tracer
                 items["footer"].Text = esp and "ESP preview active" or "ESP disabled"
 
-                items["box_stroke"].Color = accent
-                items["health"].BackgroundColor3 = accent
-                items["tracer"].BackgroundColor3 = accent
-                items["name"].TextColor3 = accent
+                items["box_stroke"].Color = box_color
+                items["box_stroke"].Thickness = box_thickness
+                items["health"].BackgroundColor3 = health_color
+                items["tracer"].BackgroundColor3 = tracer_color
+                items["name"].TextColor3 = name_color
+                items["distance"].TextColor3 = distance_color
 
                 if items["model"] then
                     if cfg.model_base_cframe then
@@ -4410,7 +4514,7 @@
                     for _, object in items["model"]:GetDescendants() do
                         if object:IsA("BasePart") then
                             if chams then
-                                object.Color = accent
+                                object.Color = chams_color
                                 object.Material = Enum.Material.ForceField
                                 object.Transparency = 0.08
                             else
@@ -4428,8 +4532,8 @@
                     end
                 end
 
-                update_skeleton(accent, skeleton)
-                update_head_dot(accent, head_dot)
+                update_skeleton(skeleton_color, skeleton, skeleton_style)
+                update_head_dot(head_dot_color, head_dot, head_dot_style)
             end
 
             library:connection(run.RenderStepped, function()
