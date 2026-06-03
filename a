@@ -587,6 +587,8 @@
                 name = properties.name or properties.Name or "Ui";
                 game_name = properties.gameInfo or properties.game_info or properties.GameInfo or "";
                 size = properties.size or properties.Size or dim2(0, 700, 0, 565);
+                menu_key = properties.menuKey or properties.menu_key or properties.MenuKey or Enum.KeyCode.Insert;
+                menu_open = true;
                 selected_tab;
                 items = {};
 
@@ -916,10 +918,42 @@
                 library:resizify(items[ "main" ])
             end 
 
+            local function menu_key_matches(input)
+                local key = cfg.menu_key
+
+                if typeof(key) == "EnumItem" then
+                    return input.KeyCode == key or input.UserInputType == key
+                end
+
+                local key_name = tostring(key):gsub("^Enum%.KeyCode%.", ""):gsub("^Enum%.UserInputType%.", "")
+                return input.KeyCode.Name == key_name or input.UserInputType.Name == key_name
+            end
+
+            function cfg.set_menu_key(key)
+                if type(key) == "table" then
+                    key = key.key or key.Key or key.value or key.Value
+                end
+
+                if key and key ~= "NONE" then
+                    cfg.menu_key = key
+                end
+            end
+
             function cfg.toggle_menu(bool) 
 
+                cfg.menu_open = bool
                 library[ "items" ].Enabled = bool
             end 
+
+            library:connection(uis.InputBegan, function(input, game_event)
+                if game_event then
+                    return
+                end
+
+                if menu_key_matches(input) then
+                    cfg.toggle_menu(not cfg.menu_open)
+                end
+            end)
                 
             return setmetatable(cfg, library)
         end 
@@ -3774,7 +3808,12 @@
             section:button({name = "Load", callback = function() library:load_config(readfile(library.directory .. "/configs/" .. flags["config_name_list"] .. ".cfg"))  library:update_config_list() notifications:create_notification({name = "Configs", info = "Loaded config:\n" .. flags["config_name_list"]}) end})
             section:button({name = "Delete", callback = function() delfile(library.directory .. "/configs/" .. flags["config_name_list"] .. ".cfg")  library:update_config_list() notifications:create_notification({name = "Configs", info = "Deleted config:\n" .. flags["config_name_list"]}) end})
             section:colorpicker({name = "Theme Color", info = "Changes the menu accent color.", callback = function(color, alpha) library:update_theme("accent", color) end, color = themes.preset.accent})
-            section:keybind({name = "Menu Bind", info = "Sets the key used to show or hide the menu.", key = Enum.KeyCode.Insert, callback = function(bool) window.toggle_menu(bool) end, default = true})
+            section:keybind({name = "Menu Bind", info = "Sets the key used to show or hide the menu.", flag = "menu_bind", key = window.menu_key or Enum.KeyCode.Insert, mode = "Toggle", callback = function()
+                local bind = flags["menu_bind"]
+                if window.set_menu_key and type(bind) == "table" then
+                    window.set_menu_key(bind.key)
+                end
+            end, default = false})
         end
 
         function notifications:refresh_notifs() 
