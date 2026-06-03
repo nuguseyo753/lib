@@ -1,8 +1,7 @@
 --[[
 
     Ui Library
-    -> Millenium-style base with a slightly changed visual identity
-    -> Adds an external ESP character preview inspired by Nhack-style feedback
+    -> Millenium-style base with a changed black/red visual identity
 ]]
 
 -- Variables 
@@ -436,16 +435,23 @@
         end
 
         function library:update_theme(theme, color)
-            for _, property in themes.utility[theme] do 
+            if not themes.utility[theme] then
+                return
+            end
 
-                for m, object in property do 
-                    if object[_] == themes.preset[theme] then 
-                        object[_] = color 
-                    end 
+            themes.preset[theme] = color
+
+            for property, objects in themes.utility[theme] do 
+                for _, object in objects do 
+                    if object and object.Parent then
+                        if object:IsA("UIStroke") then
+                            object[property] = color
+                        else
+                            library:tween(object, {[property] = color}, Enum.EasingStyle.Quad, 0.18)
+                        end
+                    end
                 end 
             end 
-
-            themes.preset[theme] = color 
         end 
 
         function library:tooltip(target, text)
@@ -459,7 +465,7 @@
                 end
 
                 local holder = library:create("Frame", {
-                    Parent = library.other or library.items;
+                    Parent = library.items;
                     Name = "\0";
                     Visible = false;
                     BackgroundColor3 = rgb(18, 18, 18);
@@ -520,9 +526,6 @@
                 local tip = ensure()
                 tip.label.Text = text
                 tip.holder.Visible = true
-                if library.other then
-                    library.other.Enabled = true
-                end
             end)
 
             target.MouseMoved:Connect(move)
@@ -587,7 +590,7 @@
             local cfg = { 
                 suffix = properties.suffix or properties.Suffix or "";
                 name = properties.name or properties.Name or "Ui";
-                game_name = properties.gameInfo or properties.game_info or properties.GameInfo or "Ui for Roblox";
+                game_name = properties.gameInfo or properties.game_info or properties.GameInfo or "";
                 size = properties.size or properties.Size or dim2(0, 700, 0, 565);
                 selected_tab;
                 items = {};
@@ -610,6 +613,15 @@
                 ZIndexBehavior = Enum.ZIndexBehavior.Sibling;
                 IgnoreGuiInset = true;
             }); 
+
+            library[ "cache" ] = library:create( "Frame" , {
+                Parent = library[ "other" ];
+                Name = "\0";
+                Visible = false;
+                BackgroundTransparency = 1;
+                BorderSizePixel = 0;
+                Size = dim2(0, 0, 0, 0);
+            });
 
             local items = cfg.items; do
                 items[ "main" ] = library:create( "Frame" , {
@@ -638,7 +650,7 @@
                     BackgroundTransparency = 1;
                     Name = "\0";
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(0, 140, 1, -25);
+                    Size = dim2(0, 140, 1, 0);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(14, 14, 14)
                 });
@@ -657,9 +669,9 @@
                     Parent = items[ "side_frame" ];
                     Name = "\0";
                     BackgroundTransparency = 1;
-                    Position = dim2(0, 0, 0, 64);
+                    Position = dim2(0, 0, 0, 76);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, 0, 1, -64);
+                    Size = dim2(1, 0, 1, -144);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(255, 255, 255)
                 }); cfg.button_holder = items[ "button_holder" ];
@@ -696,7 +708,6 @@
                 items[ "title" ] = library:create( "TextLabel" , {
                     FontFace = fonts.font;
                     BorderColor3 = rgb(0, 0, 0);
-                    Text = name;
                     Parent = items[ "side_frame" ];
                     Name = "\0";
                     Text = cfg.name .. cfg.suffix;
@@ -710,6 +721,79 @@
                     TextXAlignment = Enum.TextXAlignment.Left;
                     TextSize = 24;
                     BackgroundColor3 = rgb(255, 255, 255)
+                });
+
+                local thumbnail = ""
+                pcall(function()
+                    thumbnail = players:GetUserThumbnailAsync(lp.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+                end)
+
+                items[ "profile" ] = library:create( "Frame" , {
+                    Parent = items[ "side_frame" ];
+                    Name = "\0";
+                    AnchorPoint = vec2(0, 1);
+                    Position = dim2(0, 10, 1, -12);
+                    Size = dim2(1, -20, 0, 54);
+                    BorderSizePixel = 0;
+                    BackgroundColor3 = rgb(18, 18, 18);
+                    BackgroundTransparency = 0;
+                });
+
+                library:create( "UICorner" , {
+                    Parent = items[ "profile" ];
+                    CornerRadius = dim(0, 8)
+                });
+
+                library:create( "UIStroke" , {
+                    Parent = items[ "profile" ];
+                    ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
+                    Color = rgb(36, 36, 36)
+                });
+
+                items[ "profile_avatar" ] = library:create( "ImageLabel" , {
+                    Parent = items[ "profile" ];
+                    Name = "\0";
+                    BackgroundColor3 = rgb(28, 28, 28);
+                    BorderSizePixel = 0;
+                    Position = dim2(0, 8, 0.5, -17);
+                    Size = dim2(0, 34, 0, 34);
+                    Image = thumbnail;
+                    ScaleType = Enum.ScaleType.Crop;
+                });
+
+                library:create( "UICorner" , {
+                    Parent = items[ "profile_avatar" ];
+                    CornerRadius = dim(0, 999)
+                });
+
+                items[ "profile_name" ] = library:create( "TextLabel" , {
+                    Parent = items[ "profile" ];
+                    Name = "\0";
+                    BackgroundTransparency = 1;
+                    BorderSizePixel = 0;
+                    Position = dim2(0, 48, 0, 10);
+                    Size = dim2(1, -56, 0, 16);
+                    FontFace = fonts.font;
+                    Text = lp.DisplayName ~= "" and lp.DisplayName or lp.Name;
+                    TextColor3 = rgb(242, 242, 242);
+                    TextSize = 13;
+                    TextTruncate = Enum.TextTruncate.AtEnd;
+                    TextXAlignment = Enum.TextXAlignment.Left;
+                });
+
+                items[ "profile_user" ] = library:create( "TextLabel" , {
+                    Parent = items[ "profile" ];
+                    Name = "\0";
+                    BackgroundTransparency = 1;
+                    BorderSizePixel = 0;
+                    Position = dim2(0, 48, 0, 27);
+                    Size = dim2(1, -56, 0, 14);
+                    FontFace = fonts.small;
+                    Text = "@" .. lp.Name;
+                    TextColor3 = rgb(120, 120, 120);
+                    TextSize = 12;
+                    TextTruncate = Enum.TextTruncate.AtEnd;
+                    TextXAlignment = Enum.TextXAlignment.Left;
                 });
                 
                 items[ "multi_holder" ] = library:create( "Frame" , {
@@ -757,7 +841,7 @@
                     BackgroundTransparency = 1;
                     Position = dim2(0, 140, 0, 56);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, -140, 1, -81);
+                    Size = dim2(1, -140, 1, -56);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(14, 14, 14);
                     ZIndex = 2;
@@ -772,9 +856,10 @@
                     AnchorPoint = vec2(0, 1);
                     Parent = items[ "main" ];
                     Name = "\0";
+                    Visible = false;
                     Position = dim2(0, 0, 1, 0);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, 0, 0, 25);
+                    Size = dim2(1, 0, 0, 0);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(23, 23, 23)
                 });
@@ -798,7 +883,7 @@
                     Parent = items[ "info" ];
                     TextColor3 = rgb(72, 72, 73);
                     BorderColor3 = rgb(0, 0, 0);
-                    Text = cfg.game_name;
+                    Text = "";
                     Name = "\0";
                     Size = dim2(1, 0, 0, 0);
                     AnchorPoint = vec2(0, 0.5);
@@ -817,7 +902,7 @@
                     Name = "\0";
                     TextColor3 = themes.preset.accent;
                     BorderColor3 = rgb(0, 0, 0);
-                    Text = '<font color="rgb(72, 72, 73)">32 days left, </font>' .. cfg.name .. cfg.suffix;
+                    Text = "";
                     Size = dim2(1, 0, 0, 0);
                     Position = dim2(0, -10, 0.5, -1);
                     AnchorPoint = vec2(0, 0.5);
@@ -859,7 +944,7 @@
                 group = properties.group or properties.Group;
                 
                 -- multi 
-                tabs = properties.tabs or properties.Tabs or {"Main", "Misc.", "Settings"};
+                tabs = properties.tabs or properties.Tabs or {"Overview", "Extra", "Options"};
                 pages = {}; -- data store for multi sections
                 current_multi; 
                 
@@ -888,7 +973,7 @@
                     BackgroundTransparency = 1;
                     Position = dim2(0, 140, 0, 56);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, -160, 1, -101);
+                    Size = dim2(1, -160, 1, -76);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(255, 255, 255)
                 });
@@ -1016,18 +1101,18 @@
                                     Text = "";
                                     Parent = items[ "multi_section_button_holder" ];
                                     Name = "\0";
-                                    Size = dim2(0, 0, 0, 39);
+                                    Size = dim2(0, 0, 0, 34);
                                     BackgroundTransparency = 1;
                                     ClipsDescendants = true;
                                     BorderSizePixel = 0;
                                     AutomaticSize = Enum.AutomaticSize.X;
-                                    TextSize = 16;
+                                    TextSize = 14;
                                     BackgroundColor3 = rgb(22, 22, 22)
                                 });
                                 
                                 multi_items[ "name" ] = library:create( "TextLabel" , {
                                     FontFace = fonts.font;
-                                    TextColor3 = rgb(62, 62, 63);
+                                    TextColor3 = rgb(92, 92, 92);
                                     BorderColor3 = rgb(0, 0, 0);
                                     Text = section;
                                     Parent = multi_items[ "button" ];
@@ -1037,7 +1122,7 @@
                                     TextXAlignment = Enum.TextXAlignment.Left;
                                     BorderSizePixel = 0;
                                     AutomaticSize = Enum.AutomaticSize.XY;
-                                    TextSize = 16;
+                                    TextSize = 14;
                                     BackgroundColor3 = rgb(255, 255, 255)
                                 });
                                 
@@ -1049,12 +1134,12 @@
                                 
                                 multi_items[ "accent" ] = library:create( "Frame" , {
                                     BorderColor3 = rgb(0, 0, 0);
-                                    AnchorPoint = vec2(0, 1);
+                                    AnchorPoint = vec2(0.5, 1);
                                     Parent = multi_items[ "button" ];
                                     BackgroundTransparency = 1;
-                                    Position = dim2(0, 10, 1, 4);
+                                    Position = dim2(0.5, 0, 1, -2);
                                     Name = "\0";
-                                    Size = dim2(1, -20, 0, 6);
+                                    Size = dim2(0, 0, 0, 2);
                                     BorderSizePixel = 0;
                                     BackgroundColor3 = themes.preset.accent
                                 }); library:apply_theme(multi_items[ "accent" ], "accent", "BackgroundColor3");
@@ -1124,13 +1209,12 @@
                                 self.items[ "global_fade" ].BackgroundTransparency = 0.18
                                 library:tween(self.items[ "global_fade" ], {BackgroundTransparency = 1}, Enum.EasingStyle.Quart, 0.34)
                                 
-                                local old_size = page.page.Size
                                 page.page.Size = dim2(1, -20, 1, -20)
                             end
 
                             if page then
-                                library:tween(page.text, {TextColor3 = rgb(62, 62, 63)})
-                                library:tween(page.accent, {BackgroundTransparency = 1})
+                                library:tween(page.text, {TextColor3 = rgb(92, 92, 92)})
+                                library:tween(page.accent, {BackgroundTransparency = 1, Size = dim2(0, 0, 0, 2)}, Enum.EasingStyle.Quart, 0.24)
                                 library:tween(page.button, {BackgroundTransparency = 1})
 
                                 page.page.Visible = false
@@ -1138,10 +1222,11 @@
                             end 
                             
                             library:tween(data.text, {TextColor3 = rgb(255, 255, 255)})
-                            library:tween(data.accent, {BackgroundTransparency = 0})
+                            library:tween(data.accent, {BackgroundTransparency = 0, Size = dim2(1, -12, 0, 2)}, Enum.EasingStyle.Quart, 0.28)
                             library:tween(data.button, {BackgroundTransparency = 0})
                             data.page.Size = dim2(1, -14, 1, -14)
-                            library:tween(data.page, {Size = dim2(1, 0, 1, 0)}, Enum.EasingStyle.Quart, 0.34)
+                            data.page.Position = dim2(0, 8, 0, 0)
+                            library:tween(data.page, {Size = dim2(1, 0, 1, 0), Position = dim2(0, 0, 0, 0)}, Enum.EasingStyle.Quart, 0.34)
 
                             data.page.Visible = true
                             data.page.Parent = items["tab_holder"]
@@ -1170,7 +1255,7 @@
                         self.items[ "global_fade" ].BackgroundTransparency = 0.18
                         
                         library:tween(self.items[ "global_fade" ], {BackgroundTransparency = 1}, Enum.EasingStyle.Quart, 0.34)
-                        selected_tab[ 4 ].Size = dim2(1, -160, 1, -101)
+                        selected_tab[ 4 ].Size = dim2(1, -160, 1, -76)
                     end
 
                     library:tween(selected_tab[ 1 ], {BackgroundTransparency = 1})
@@ -1191,7 +1276,8 @@
                 library:tween(items[ "icon" ], {ImageColor3 = rgb(255, 255, 255)})
                 library:tween(items[ "name" ], {TextColor3 = rgb(255, 255, 255)})
                 library:tween(items[ "active_line" ], {BackgroundTransparency = 0, Size = dim2(0, 2, 1, -12)}, Enum.EasingStyle.Quart, 0.32)
-                library:tween(items[ "tab_holder" ], {Size = dim2(1, -140, 1, -81)}, Enum.EasingStyle.Quart, 0.34)
+                items[ "tab_holder" ].Position = dim2(0, 148, 0, 56)
+                library:tween(items[ "tab_holder" ], {Size = dim2(1, -140, 1, -56), Position = dim2(0, 140, 0, 56)}, Enum.EasingStyle.Quart, 0.34)
                 
                 items[ "tab_holder" ].Visible = true 
                 items[ "tab_holder" ].Parent = self.items[ "main" ]
@@ -1208,15 +1294,6 @@
                 }
 
                 library.current_tab_name = cfg.name
-
-                if library.esp_preview_window then
-                    local is_visuals_tab = string.find(string.lower(cfg.name), "visual") ~= nil
-                    if library.esp_preview_window.set_tab_visible then
-                        library.esp_preview_window.set_tab_visible(is_visuals_tab)
-                    elseif library.esp_preview_window.set_visible then
-                        library.esp_preview_window.set_visible(is_visuals_tab)
-                    end
-                end
 
                 library:close_element()
             end
@@ -1249,7 +1326,7 @@
                     TextXAlignment = Enum.TextXAlignment.Left;
                     BorderSizePixel = 0; 
                     AutomaticSize = Enum.AutomaticSize.XY;
-                    TextSize = 16;
+                    TextSize = 13;
                     BackgroundColor3 = rgb(255, 255, 255)
                 });
                 
@@ -1621,7 +1698,7 @@
                     BackgroundColor3 = rgb(255, 255, 255)
                 });
 
-                if cfg.info then 
+                if false and cfg.info then 
                     items[ "info" ] = library:create( "TextLabel" , {
                         FontFace = fonts.small;
                         TextColor3 = rgb(130, 130, 130);
@@ -1888,7 +1965,7 @@
                     BackgroundColor3 = rgb(255, 255, 255)
                 });
                 
-                if cfg.info then 
+                if false and cfg.info then 
                     items[ "info" ] = library:create( "TextLabel" , {
                         FontFace = fonts.small;
                         TextColor3 = rgb(130, 130, 130);
@@ -2119,7 +2196,7 @@
                         BackgroundColor3 = rgb(255, 255, 255)
                     });
                     
-                    if cfg.info then 
+                    if false and cfg.info then 
                         items[ "info" ] = library:create( "TextLabel" , {
                             FontFace = fonts.small;
                             TextColor3 = rgb(130, 130, 130);
@@ -2429,7 +2506,7 @@
                     BackgroundColor3 = rgb(255, 255, 255)
                 });
 
-                if cfg.info then 
+                if false and cfg.info then 
                     items[ "info" ] = library:create( "TextLabel" , {
                         FontFace = fonts.small;
                         TextColor3 = rgb(130, 130, 130);
@@ -3719,7 +3796,7 @@
         end 
 
         function library:init_config(window) 
-            local main = window:tab({name = "Configs", tabs = {"Main"}})
+            local main = window:tab({name = "Configs", tabs = {"Setup"}})
             
             local column = main:column({})
             local section = column:section({name = "Configs", size = 1, default = true, icon = "rbxassetid://139628202576511"})
