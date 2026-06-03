@@ -1,10 +1,4 @@
---[[
-
-    Ui Library
-    -> Millenium-style base with a changed black/red visual identity
-]]
-
--- Variables 
+ 
     local uis = game:GetService("UserInputService") 
     local players = game:GetService("Players") 
     local ws = game:GetService("Workspace")
@@ -439,11 +433,20 @@
                 return
             end
 
+            local old_color = themes.preset[theme]
             themes.preset[theme] = color
+
+            local function is_theme_color(value)
+                if typeof(value) ~= "Color3" or typeof(old_color) ~= "Color3" then
+                    return true
+                end
+
+                return abs(value.R - old_color.R) < 0.01 and abs(value.G - old_color.G) < 0.01 and abs(value.B - old_color.B) < 0.01
+            end
 
             for property, objects in themes.utility[theme] do 
                 for _, object in objects do 
-                    if object and object.Parent then
+                    if object and object.Parent and is_theme_color(object[property]) then
                         if object:IsA("UIStroke") then
                             object[property] = color
                         else
@@ -944,7 +947,7 @@
                 group = properties.group or properties.Group;
                 
                 -- multi 
-                tabs = properties.tabs or properties.Tabs or {"Overview", "Extra", "Options"};
+                tabs = properties.tabs or properties.Tabs or {"Main", "Misc.", "Settings"};
                 pages = {}; -- data store for multi sections
                 current_multi; 
                 
@@ -1134,12 +1137,12 @@
                                 
                                 multi_items[ "accent" ] = library:create( "Frame" , {
                                     BorderColor3 = rgb(0, 0, 0);
-                                    AnchorPoint = vec2(0.5, 1);
+                                    AnchorPoint = vec2(0, 0.5);
                                     Parent = multi_items[ "button" ];
                                     BackgroundTransparency = 1;
-                                    Position = dim2(0.5, 0, 1, -2);
+                                    Position = dim2(0, 4, 0.5, 0);
                                     Name = "\0";
-                                    Size = dim2(0, 0, 0, 2);
+                                    Size = dim2(0, 3, 0, 0);
                                     BorderSizePixel = 0;
                                     BackgroundColor3 = themes.preset.accent
                                 }); library:apply_theme(multi_items[ "accent" ], "accent", "BackgroundColor3");
@@ -1152,7 +1155,7 @@
                                 library:create( "UIPadding" , {
                                     Parent = multi_items[ "button" ];
                                     PaddingRight = dim(0, 10);
-                                    PaddingLeft = dim(0, 10)
+                                    PaddingLeft = dim(0, 15)
                                 });
                                 
                                 library:create( "UICorner" , {
@@ -1214,7 +1217,7 @@
 
                             if page then
                                 library:tween(page.text, {TextColor3 = rgb(92, 92, 92)})
-                                library:tween(page.accent, {BackgroundTransparency = 1, Size = dim2(0, 0, 0, 2)}, Enum.EasingStyle.Quart, 0.24)
+                                library:tween(page.accent, {BackgroundTransparency = 1, Size = dim2(0, 3, 0, 0)}, Enum.EasingStyle.Quart, 0.24)
                                 library:tween(page.button, {BackgroundTransparency = 1})
 
                                 page.page.Visible = false
@@ -1222,7 +1225,7 @@
                             end 
                             
                             library:tween(data.text, {TextColor3 = rgb(255, 255, 255)})
-                            library:tween(data.accent, {BackgroundTransparency = 0, Size = dim2(1, -12, 0, 2)}, Enum.EasingStyle.Quart, 0.28)
+                            library:tween(data.accent, {BackgroundTransparency = 0, Size = dim2(0, 3, 0, 18)}, Enum.EasingStyle.Quart, 0.28)
                             library:tween(data.button, {BackgroundTransparency = 0})
                             data.page.Size = dim2(1, -14, 1, -14)
                             data.page.Position = dim2(0, 8, 0, 0)
@@ -1758,7 +1761,7 @@
                             Size = dim2(0, 16, 0, 16);
                             BorderSizePixel = 0;
                             TextSize = 14;
-                            BackgroundColor3 = rgb(67, 67, 67)
+                            BackgroundColor3 = cfg.default and themes.preset.accent or rgb(67, 67, 67)
                         }); library:apply_theme(items[ "toggle_button" ], "accent", "BackgroundColor3");
                         
                         library:create( "UICorner" , {
@@ -1774,7 +1777,7 @@
                             BorderColor3 = rgb(0, 0, 0);
                             Position = dim2(0, 1, 0, 1);
                             BorderSizePixel = 0;
-                            BackgroundColor3 = rgb(20, 20, 20)
+                            BackgroundColor3 = cfg.default and themes.preset.accent or rgb(20, 20, 20)
                         }); library:apply_theme(items[ "outline" ], "accent", "BackgroundColor3");
                         
                         items[ "tick" ] = library:create( "ImageLabel" , {
@@ -1815,7 +1818,7 @@
                             Size = dim2(0, 36, 0, 18);
                             BorderSizePixel = 0;
                             TextSize = 14;
-                            BackgroundColor3 = themes.preset.accent
+                            BackgroundColor3 = cfg.default and themes.preset.accent or rgb(58, 58, 58)
                         }); library:apply_theme(items[ "toggle_button" ], "accent", "BackgroundColor3");
                         
                         library:create( "UICorner" , {
@@ -1831,7 +1834,7 @@
                             BorderColor3 = rgb(0, 0, 0);
                             Position = dim2(0, 1, 0, 1);
                             BorderSizePixel = 0;
-                            BackgroundColor3 = themes.preset.accent
+                            BackgroundColor3 = cfg.default and themes.preset.accent or rgb(50, 50, 50)
                         }); library:apply_theme(items[ "inline" ], "accent", "BackgroundColor3");
                         
                         library:create( "UICorner" , {
@@ -1847,11 +1850,11 @@
                         items[ "circle" ] = library:create( "Frame" , {
                             Parent = items[ "inline" ];
                             Name = "\0";
-                            Position = dim2(1, -14, 0, 2);
+                            Position = cfg.default and dim2(1, -14, 0, 2) or dim2(0, 2, 0, 2);
                             BorderColor3 = rgb(0, 0, 0);
                             Size = dim2(0, 12, 0, 12);
                             BorderSizePixel = 0;
-                            BackgroundColor3 = rgb(255, 255, 255)
+                            BackgroundColor3 = cfg.default and rgb(255, 255, 255) or rgb(86, 86, 86)
                         });
                         
                         library:create( "UICorner" , {
@@ -3796,7 +3799,7 @@
         end 
 
         function library:init_config(window) 
-            local main = window:tab({name = "Configs", tabs = {"Setup"}})
+            local main = window:tab({name = "Configs", tabs = {"Main"}})
             
             local column = main:column({})
             local section = column:section({name = "Configs", size = 1, default = true, icon = "rbxassetid://139628202576511"})
