@@ -3518,6 +3518,8 @@
             return setmetatable(cfg, library)
         end
 
+        library.Keybind = library.keybind
+
         function library:button(options) 
             local cfg = {
                 name = options.name or "TextBox",
