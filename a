@@ -1,3 +1,4 @@
+ 
     local uis = game:GetService("UserInputService") 
     local players = game:GetService("Players") 
     local ws = game:GetService("Workspace")
@@ -55,7 +56,9 @@
     local find = table.find 
     local remove = table.remove
     local concat = table.concat
+-- 
 
+-- Library init
     getgenv().library = {
         directory = "ui",
         folders = {
@@ -192,7 +195,10 @@
             font = Font.new(SemiBold, Enum.FontWeight.Regular, Enum.FontStyle.Normal);
         }
     end
+--
 
+-- Library functions 
+    -- Misc functions
         function library:tween(obj, properties, easing_style, time) 
             local tween = tween_service:Create(obj, TweenInfo.new(time or 0.25, easing_style or Enum.EasingStyle.Quint, Enum.EasingDirection.InOut, 0, false, 0), properties):Play()
                 
@@ -419,14 +425,6 @@
         end 
 
         function library:apply_theme(instance, theme, property) 
-            if not themes.utility[theme] then
-                themes.utility[theme] = {}
-            end
-
-            if not themes.utility[theme][property] then
-                themes.utility[theme][property] = {}
-            end
-
             insert(themes.utility[theme][property], instance)
         end
 
@@ -448,21 +446,11 @@
 
             for property, objects in themes.utility[theme] do 
                 for _, object in objects do 
-                    if object and object.Parent then
-                        local ok, current_value = pcall(function()
-                            return object[property]
-                        end)
-
-                        if ok and is_theme_color(current_value) then
-                            if object:IsA("UIStroke") then
-                                pcall(function()
-                                    object[property] = color
-                                end)
-                            else
-                                pcall(function()
-                                    library:tween(object, {[property] = color}, Enum.EasingStyle.Quad, 0.18)
-                                end)
-                            end
+                    if object and object.Parent and is_theme_color(object[property]) then
+                        if object:IsA("UIStroke") then
+                            object[property] = color
+                        else
+                            library:tween(object, {[property] = color}, Enum.EasingStyle.Quad, 0.18)
                         end
                     end
                 end 
@@ -598,7 +586,9 @@
             
             library = nil 
         end 
-
+    --
+    
+    -- Library element functions
         function library:window(properties)
             local cfg = { 
                 suffix = properties.suffix or properties.Suffix or "";
@@ -929,13 +919,21 @@
                 }); library:apply_theme(items[ "other_info" ], "accent", "TextColor3");        
             end 
 
-            do
+            do -- Other
                 library:draggify(items[ "main" ])
                 library:resizify(items[ "main" ])
             end 
 
             function cfg.toggle_menu(bool) 
+                -- WIP 
+                -- if cfg.tween then 
+                --     cfg.tween:Cancel()
+                -- end 
 
+                -- items[ "main" ].Size = dim2(items[ "main" ].Size.Scale.X, items[ "main" ].Size.Offset.X - 20, items[ "main" ].Size.Scale.Y, items[ "main" ].Size.Offset.Y - 20)
+                -- library:tween(items[ "tab_holder" ], {Size = dim2(1, -196, 1, -81)}, Enum.EasingStyle.Quad, 0.4)
+                -- cfg.tween = 
+                
                 library[ "items" ].Enabled = bool
             end 
                 
@@ -948,8 +946,9 @@
                 icon = properties.icon or properties.Icon or "http://www.roblox.com/asset/?id=6034767608";
                 group = properties.group or properties.Group;
                 
+                -- multi 
                 tabs = properties.tabs or properties.Tabs or {"Main", "Misc.", "Settings"};
-                pages = {};
+                pages = {}; -- data store for multi sections
                 current_multi; 
                 
                 items = {};
@@ -982,6 +981,7 @@
                     BackgroundColor3 = rgb(255, 255, 255)
                 });
                 
+                -- Tab buttons 
                     items[ "button" ] = library:create( "TextButton" , {
                         FontFace = fonts.font;
                         TextColor3 = rgb(255, 255, 255);
@@ -1062,7 +1062,9 @@
                         Enabled = false;
                         ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                     });
+                -- 
 
+                -- Multi Sections
                     items[ "multi_section_button_holder" ] = library:create( "Frame" , {
                         Parent = library.cache;
                         BackgroundTransparency = 1;
@@ -1093,7 +1095,7 @@
                         local data = {items = {}} 
 
                         local multi_items = data.items; do 
-
+                            -- Button
                                 multi_items[ "button" ] = library:create( "TextButton" , {
                                     FontFace = fonts.font;
                                     TextColor3 = rgb(255, 255, 255);
@@ -1119,7 +1121,6 @@
                                     Parent = multi_items[ "button" ];
                                     Name = "\0";
                                     Size = dim2(0, 0, 1, 0);
-                                    Position = dim2(0, 24, 0, 0);
                                     BackgroundTransparency = 1;
                                     TextXAlignment = Enum.TextXAlignment.Left;
                                     BorderSizePixel = 0;
@@ -1139,7 +1140,7 @@
                                     AnchorPoint = vec2(0, 0.5);
                                     Parent = multi_items[ "button" ];
                                     BackgroundTransparency = 1;
-                                    Position = dim2(0, 8, 0.5, 0);
+                                    Position = dim2(0, 4, 0.5, 0);
                                     Name = "\0";
                                     Size = dim2(0, 3, 0, 0);
                                     BorderSizePixel = 0;
@@ -1154,14 +1155,16 @@
                                 library:create( "UIPadding" , {
                                     Parent = multi_items[ "button" ];
                                     PaddingRight = dim(0, 10);
-                                    PaddingLeft = dim(0, 8)
+                                    PaddingLeft = dim(0, 15)
                                 });
                                 
                                 library:create( "UICorner" , {
                                     Parent = multi_items[ "button" ];
                                     CornerRadius = dim(0, 7)
                                 }); 
+                            --
 
+                            -- Tab 
                                 multi_items[ "tab" ] = library:create( "Frame" , {
                                     Parent = library.cache;
                                     BackgroundTransparency = 1;
@@ -1189,7 +1192,7 @@
                                     PaddingRight = dim(0, 7);
                                     PaddingLeft = dim(0, 7)
                                 });
-
+                            --
                         end
 
                         data.text = multi_items[ "name" ]
@@ -1198,6 +1201,10 @@
                         data.page = multi_items[ "tab" ]
                         data.parent = setmetatable(data, library):sub_tab({}).items[ "tab_parent" ]
                         
+                        -- Old column code
+                        -- data.left = multi_items[ "left" ]
+                        -- data.right = multi_items[ "right" ]
+
 						function data.open_page()
 							local page = cfg.current_multi; 
                             
@@ -1240,7 +1247,7 @@
                     end 
 
                     cfg.pages[1].open_page()
-
+                --
             end 
 
             function cfg.open_tab() 
@@ -1336,6 +1343,7 @@
             return setmetatable(cfg, library)
         end 
 
+        -- Miscellaneous 
             function library:column(properties) 
                 local cfg = {items = {}, size = properties.size or 1}
 
@@ -1394,6 +1402,7 @@
 
                 return setmetatable(cfg, library)
             end 
+        --
 
         function library:section(properties)
             local cfg = {
@@ -1648,7 +1657,7 @@
                 info = options.info or nil,
                 flag = options.flag or library:next_flag(),
                 
-                type = options.type and string.lower(options.type) or rand == 1 and "toggle" or "checkbox";
+                type = options.type and string.lower(options.type) or rand == 1 and "toggle" or "checkbox"; -- "toggle", "checkbox"
 
                 default = options.default or false,
                 folding = options.folding or false, 
@@ -1736,6 +1745,7 @@
                     SortOrder = Enum.SortOrder.LayoutOrder
                 });
                 
+                -- Toggle
                     if cfg.type == "checkbox" then 
                         items[ "toggle_button" ] = library:create( "TextButton" , {
                             FontFace = fonts.small;
@@ -1852,7 +1862,7 @@
                             CornerRadius = dim(0, 999)
                         });                        
                     end 
-
+                --                
             end;
             
             function cfg.set(bool)
@@ -1884,7 +1894,7 @@
                 cfg.set(cfg.enabled)
             end)
             
-            if cfg.seperator then
+            if cfg.seperator then -- ok bro my lua either sucks or this was a pain in the ass to make (simple if statement aswell ?뮅)
                 library:create( "Frame" , {
                     AnchorPoint = vec2(0, 1);
                     Parent = self.items[ "elements" ];
@@ -1912,6 +1922,7 @@
                 callback = options.callback or function() end, 
                 info = options.info or nil; 
 
+                -- value settings
                 min = options.min or options.minimum or 0,
                 max = options.max or options.maximum or 100,
                 intervals = options.interval or options.decimal or 1,
@@ -2142,6 +2153,7 @@
 
                 width = options.width or 130;
 
+                -- Ignore these 
                 open = false;
                 option_instances = {};
                 multi_items = {};
@@ -2155,7 +2167,7 @@
             flags[cfg.flag] = cfg.default
 
             local items = cfg.items; do 
-
+                -- Element
                     items[ "dropdown_object" ] = library:create( "TextButton" , {
                         FontFace = fonts.small;
                         TextColor3 = rgb(0, 0, 0);
@@ -2289,7 +2301,9 @@
                         BorderSizePixel = 0;
                         BackgroundColor3 = rgb(255, 255, 255)
                     });
+                -- 
 
+                -- Element Holder
                     items[ "dropdown_holder" ] = library:create( "Frame" , {
                         BorderColor3 = rgb(0, 0, 0);
                         Parent = library[ "items" ];
@@ -2329,7 +2343,7 @@
                         Parent = items[ "outline" ];
                         CornerRadius = dim(0, 4)
                     });
-
+                -- 
             end 
 
             function cfg.render_option(text)
@@ -2401,7 +2415,7 @@
 
                 for _, option in list do 
                     local button = cfg.render_option(option)
-                    cfg.y_size += button.AbsoluteSize.Y + 6
+                    cfg.y_size += button.AbsoluteSize.Y + 6 -- super annoying manual sizing but oh well
                     insert(cfg.option_instances, button)
                     
                     button.MouseButton1Down:Connect(function()
@@ -2562,7 +2576,7 @@
                 flag = options.flag or library:next_flag(),
                 info = options.info or nil,
 
-                color = options.color or color(1, 1, 1),
+                color = options.color or color(1, 1, 1), -- Default to white color if not provided
                 alpha = options.alpha and 1 - options.alpha or 0,
                 
                 open = false, 
@@ -2587,7 +2601,7 @@
             end
 
             local items = cfg.items; do 
-
+                -- Component
                     items[ "colorpicker" ] = library:create( "TextButton" , {
                         FontFace = fonts.small;
                         TextColor3 = rgb(0, 0, 0);
@@ -2629,7 +2643,9 @@
                         Color = rgbseq{rgbkey(0, rgb(211, 211, 211)), rgbkey(1, rgb(211, 211, 211))};
                         Parent = items[ "colorpicker_inline" ]
                     });         
-
+                --
+                
+                -- Colorpicker
                     items[ "colorpicker_holder" ] = library:create( "Frame" , {
                         Parent = library[ "other" ];
                         Name = "\0";
@@ -2900,12 +2916,12 @@
                         CornerRadius = dim(0, 3)
                     });
                     
-                    items[ "UICorenr" ] = library:create( "UICorner" , {
+                    items[ "UICorenr" ] = library:create( "UICorner" , { -- fire misstypo (im not fixing this RAWR)
                         Parent = items[ "colorpicker_holder" ];
                         Name = "\0";
                         CornerRadius = dim(0, 4)
                     });
-
+                --                  
             end;
 
             function cfg.set_visible(bool)
@@ -2914,7 +2930,7 @@
                 items[ "colorpicker_holder" ].Position = dim_offset(items[ "colorpicker" ].AbsolutePosition.X, items[ "colorpicker" ].AbsolutePosition.Y + items[ "colorpicker" ].AbsoluteSize.Y + 45)
 
                 library:tween(items[ "colorpicker_fade" ], {BackgroundTransparency = 1}, Enum.EasingStyle.Quad, 0.4)
-                library:tween(items[ "colorpicker_holder" ], {Position = items[ "colorpicker_holder" ].Position + dim_offset(0, 20)})
+                library:tween(items[ "colorpicker_holder" ], {Position = items[ "colorpicker_holder" ].Position + dim_offset(0, 20)}) -- p100 check
                 
                 if not (self.sanity and library.current_open == self and self.open) then 
                     library:close_element(cfg)
@@ -2936,11 +2952,13 @@
                 
                 local Color = hsv(h, s, v)
 
+                -- Ok so quick story, should I cache any of this? no...?? anyways I know this code is very bad but its your fault for buying a ui with animations (on a serious note im too lazy to make this look nice)
+                -- Also further note, yeah I kind of did this scale_factor * size-valuesize.plane because then I would have to do tomfoolery to make it clip properly.
                 library:tween(items[ "hue_picker" ], {Position = dim2(0, (items[ "hue_gradient" ].AbsoluteSize.X - items[ "hue_picker" ].AbsoluteSize.X) * h, 0.5, 0)}, Enum.EasingStyle.Linear, 0.05)
                 library:tween(items[ "alpha_picker" ], {Position = dim2(0, (items[ "alpha_gradient" ].AbsoluteSize.X - items[ "alpha_picker" ].AbsoluteSize.X) * (1 - a), 0.5, 0)}, Enum.EasingStyle.Linear, 0.05)
                 library:tween(items[ "satvalpicker" ], {Position = dim2(0, s * (items[ "saturation_holder" ].AbsoluteSize.X - items[ "satvalpicker" ].AbsoluteSize.X), 1, 1 - v * (items[ "saturation_holder" ].AbsoluteSize.Y - items[ "satvalpicker" ].AbsoluteSize.Y))}, Enum.EasingStyle.Linear, 0.05)
 
-                items[ "alpha_indicator" ]:FindFirstChildOfClass("UIGradient").Color = rgbseq{rgbkey(0, rgb(112, 112, 112)), rgbkey(1, hsv(h, 1, 1))};
+                items[ "alpha_indicator" ]:FindFirstChildOfClass("UIGradient").Color = rgbseq{rgbkey(0, rgb(112, 112, 112)), rgbkey(1, hsv(h, 1, 1))}; -- shit code
                 
                 items[ "colorpicker" ].BackgroundColor3 = Color
                 items[ "colorpicker_inline" ].BackgroundColor3 = Color
@@ -3192,7 +3210,7 @@
             }
 
             local items = cfg.items; do 
-
+                -- Component
                     items[ "keybind_element" ] = library:create( "TextButton" , {
                         FontFace = fonts.font;
                         TextColor3 = rgb(0, 0, 0);
@@ -3292,7 +3310,9 @@
                         PaddingRight = dim(0, 5);
                         PaddingLeft = dim(0, 5)
                     });                                  
-
+                -- 
+                
+                -- Mode Holder
                     items[ "dropdown" ] = library:create( "Frame" , {
                         BorderColor3 = rgb(0, 0, 0);
                         Parent = library.items;
@@ -3371,10 +3391,10 @@
                             cfg.open = false
                         end)
                     end
-
+                -- 
             end 
             
-            function cfg.modify_mode_color(path)
+            function cfg.modify_mode_color(path) -- ts so frikin tuff ??
                 for _, v in cfg.hold_instances do 
                     v.TextColor3 = rgb(72, 72, 72)
                 end 
@@ -3575,7 +3595,7 @@
             local cfg = {
                 open = false; 
                 items = {}; 
-                sanity = true;
+                sanity = true; -- made this for my own sanity.
             }
 
             local items = cfg.items; do 
@@ -3701,12 +3721,12 @@
                 });
             end 
 
-            function cfg.refresh_options(options_to_refresh)
+            function cfg.refresh_options(options_to_refresh) -- ignore goofy parameter
                 for _,option in cfg.data_store do 
                     option:Destroy()
                 end
 
-                for _, option_data in options_to_refresh do
+                for _, option_data in options_to_refresh do -- haha u skids no next >_<
                     local button = library:create( "TextButton" , {
                         FontFace = fonts.small;
                         TextColor3 = rgb(0, 0, 0);
@@ -3794,7 +3814,9 @@
             section:colorpicker({name = "Theme Color", info = "Changes the menu accent color.", callback = function(color, alpha) library:update_theme("accent", color) end, color = themes.preset.accent})
             section:keybind({name = "Menu Bind", info = "Sets the key used to show or hide the menu.", key = Enum.KeyCode.Insert, callback = function(bool) window.toggle_menu(bool) end, default = true})
         end
+    --
 
+    -- Notification Library
         function notifications:refresh_notifs() 
             local offset = 50
 
@@ -3950,7 +3972,9 @@
                 items[ "notification" ]:Destroy() 
             end)
         end
+    --
 
+    -- External ESP Preview
         function library:esp_preview(properties)
             properties = properties or {}
 
@@ -4836,5 +4860,7 @@
             library.esp_preview_window = cfg
             return setmetatable(cfg, library)
         end
+    --
+-- 
 
 return library
