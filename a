@@ -69,13 +69,24 @@
         config_flags = {},
         connections = {},   
         notifications = {notifs = {}},
+        searchables = {},
+        search_text = "",
         current_open; 
     }
 
     local themes = {
         preset = {
             accent = rgb(255, 70, 70),
+            card_transparency = 0.08,
         }, 
+
+        presets = {
+            Mono = {accent = rgb(255, 70, 70), card_transparency = 0.08},
+            Graphite = {accent = rgb(125, 146, 255), card_transparency = 0.12},
+            Mint = {accent = rgb(80, 220, 165), card_transparency = 0.1},
+            Rose = {accent = rgb(255, 110, 155), card_transparency = 0.1},
+            Amber = {accent = rgb(255, 185, 90), card_transparency = 0.1},
+        },
 
         utility = {
             accent = {
@@ -85,6 +96,7 @@
                 ScrollBarImageColor3 = {},
                 Color = {},
             },
+            card_transparency = {},
         }
     }
 
@@ -475,6 +487,122 @@
             end 
         end 
 
+        function library:apply_card_transparency(instance, property, offset)
+            property = property or "BackgroundTransparency"
+            offset = offset or 0
+
+            insert(themes.utility.card_transparency, {
+                instance = instance,
+                property = property,
+                offset = offset,
+            })
+
+            instance[property] = clamp((themes.preset.card_transparency or 0) + offset, 0, 1)
+        end
+
+        function library:update_card_transparency(value)
+            local transparency = clamp(tonumber(value) or themes.preset.card_transparency or 0.08, 0, 0.45)
+            themes.preset.card_transparency = transparency
+
+            for _, data in themes.utility.card_transparency do
+                local object = data.instance
+                local property = data.property or "BackgroundTransparency"
+
+                if object and object.Parent then
+                    library:tween(object, {[property] = clamp(transparency + (data.offset or 0), 0, 1)}, Enum.EasingStyle.Quad, 0.18)
+                end
+            end
+        end
+
+        function library:apply_theme_preset(name)
+            local preset = themes.presets[name]
+
+            if not preset then
+                return
+            end
+
+            library.current_theme = name
+
+            if preset.accent then
+                library:update_theme("accent", preset.accent)
+            end
+
+            if preset.card_transparency then
+                library:update_card_transparency(preset.card_transparency)
+            end
+        end
+
+        function library:normalize_search_text(text)
+            return string.lower(tostring(text or ""))
+        end
+
+        function library:register_searchable(path, text)
+            if type(path) ~= "table" then
+                return
+            end
+
+            library.searchables = library.searchables or {}
+            path.search_text = library:normalize_search_text(text)
+
+            local outline = path.items and path.items[ "outline" ]
+            if typeof(outline) == "Instance" and outline:IsA("GuiObject") then
+                path.search_size = outline.Size
+            end
+
+            insert(library.searchables, path)
+        end
+
+        function library:append_search_text(path, text)
+            if type(path) ~= "table" or text == nil then
+                return
+            end
+
+            local normalized = library:normalize_search_text(text)
+
+            if normalized ~= "" then
+                path.search_text = tostring(path.search_text or "") .. " " .. normalized
+
+                if library.search_text and library.search_text ~= "" then
+                    library:refresh_search()
+                end
+            end
+        end
+
+        function library:refresh_search()
+            local query = library:normalize_search_text(library.search_text)
+            local terms = {}
+
+            for term in string.gmatch(query, "%S+") do
+                insert(terms, term)
+            end
+
+            for _, path in library.searchables or {} do
+                local outline = path.items and path.items[ "outline" ]
+
+                if typeof(outline) == "Instance" and outline:IsA("GuiObject") then
+                    path.search_size = path.search_size or outline.Size
+
+                    local text = path.search_text or ""
+                    local visible = true
+
+                    for _, term in terms do
+                        if not string.find(text, term, 1, true) then
+                            visible = false
+                            break
+                        end
+                    end
+
+                    outline.Visible = visible
+                    outline.Size = visible and path.search_size or dim2(0, 0, 0, 0)
+                end
+            end
+        end
+
+        function library:set_search(text)
+            library.search_text = tostring(text or "")
+            library:refresh_search()
+        end
+
         function library:tooltip(target, text)
             if not target or not text or text == "" then
                 return
@@ -703,9 +831,11 @@
     
     -- Library element functions
         function library:window(properties)
+            properties = properties or {}
+
             local cfg = { 
                 suffix = properties.suffix or properties.Suffix or "";
-                name = properties.name or properties.Name or "Ui";
+                name = properties.name or properties.Name or properties.title or properties.Title or properties.window_name or properties.WindowName or "Ui";
                 game_name = properties.gameInfo or properties.game_info or properties.GameInfo or "";
                 size = properties.size or properties.Size or dim2(0, 700, 0, 565);
                 menu_key = properties.menuKey or properties.menu_key or properties.MenuKey or Enum.KeyCode.Insert;
@@ -749,8 +879,14 @@
                     Position = dim2(0.5, -cfg.size.X.Offset / 2, 0.5, -cfg.size.Y.Offset / 2);
                     BorderColor3 = rgb(0, 0, 0);
                     BorderSizePixel = 0;
+                    BackgroundTransparency = 1;
                     BackgroundColor3 = rgb(14, 14, 14)
                 }); items[ "main" ].Position = dim2(0, items[ "main" ].AbsolutePosition.X, 0, items[ "main" ].AbsolutePosition.Y)
+
+                items[ "main_scale" ] = library:create( "UIScale" , {
+                    Parent = items[ "main" ];
+                    Scale = 0.96;
+                });
                 
                 library:create( "UICorner" , {
                     Parent = items[ "main" ];
@@ -787,9 +923,10 @@
                     Parent = items[ "side_frame" ];
                     Name = "\0";
                     BackgroundTransparency = 1;
-                    Position = dim2(0, 0, 0, 76);
+                    ClipsDescendants = true;
+                    Position = dim2(0, 0, 0, 112);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, 0, 1, -144);
+                    Size = dim2(1, 0, 1, -180);
                     BorderSizePixel = 0;
                     BackgroundColor3 = rgb(255, 255, 255)
                 }); cfg.button_holder = items[ "button_holder" ];
@@ -832,14 +969,75 @@
                     BackgroundTransparency = 1;
                     Visible = true;
                     Position = dim2(0, 24, 0, 6);
-                    Size = dim2(1, -28, 0, 54);
+                    Size = dim2(1, -28, 0, 48);
                     TextColor3 = rgb(245, 245, 245);
                     BorderSizePixel = 0;
                     RichText = false;
                     TextXAlignment = Enum.TextXAlignment.Left;
-                    TextSize = 24;
+                    TextTruncate = Enum.TextTruncate.AtEnd;
+                    TextSize = 22;
                     BackgroundColor3 = rgb(255, 255, 255)
                 });
+
+                items[ "search_holder" ] = library:create( "Frame" , {
+                    Parent = items[ "side_frame" ];
+                    Name = "\0";
+                    Position = dim2(0, 10, 0, 62);
+                    Size = dim2(1, -20, 0, 34);
+                    BorderSizePixel = 0;
+                    BackgroundColor3 = rgb(18, 18, 20);
+                    BackgroundTransparency = 0.08;
+                });
+
+                library:create( "UICorner" , {
+                    Parent = items[ "search_holder" ];
+                    CornerRadius = dim(0, 8)
+                });
+
+                library:create( "UIStroke" , {
+                    Parent = items[ "search_holder" ];
+                    ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
+                    Color = rgb(44, 44, 50);
+                    Transparency = 0.25;
+                });
+
+                items[ "search_accent" ] = library:create( "Frame" , {
+                    Parent = items[ "search_holder" ];
+                    Name = "\0";
+                    AnchorPoint = vec2(0, 0.5);
+                    Position = dim2(0, 9, 0.5, 0);
+                    Size = dim2(0, 2, 0, 14);
+                    BorderSizePixel = 0;
+                    BackgroundColor3 = themes.preset.accent;
+                    BackgroundTransparency = 0.15;
+                }); library:apply_theme(items[ "search_accent" ], "accent", "BackgroundColor3");
+
+                library:create( "UICorner" , {
+                    Parent = items[ "search_accent" ];
+                    CornerRadius = dim(0, 999)
+                });
+
+                items[ "search_box" ] = library:create( "TextBox" , {
+                    Parent = items[ "search_holder" ];
+                    Name = "\0";
+                    Position = dim2(0, 18, 0, 0);
+                    Size = dim2(1, -26, 1, 0);
+                    BackgroundTransparency = 1;
+                    BorderSizePixel = 0;
+                    ClearTextOnFocus = false;
+                    FontFace = fonts.small;
+                    PlaceholderText = "Search";
+                    PlaceholderColor3 = rgb(105, 105, 112);
+                    Text = "";
+                    TextColor3 = rgb(230, 230, 230);
+                    TextSize = 14;
+                    TextXAlignment = Enum.TextXAlignment.Left;
+                    TextYAlignment = Enum.TextYAlignment.Center;
+                });
+
+                library:connection(items[ "search_box" ]:GetPropertyChangedSignal("Text"), function()
+                    library:set_search(items[ "search_box" ].Text)
+                end)
 
                 local thumbnail = ""
                 pcall(function()
@@ -1060,18 +1258,49 @@
                 end
             end
 
-            function cfg.toggle_menu(bool) 
-                -- WIP 
-                -- if cfg.tween then 
-                --     cfg.tween:Cancel()
-                -- end 
+            function cfg.set_title(name, suffix)
+                if name ~= nil then
+                    cfg.name = tostring(name)
+                end
 
-                -- items[ "main" ].Size = dim2(items[ "main" ].Size.Scale.X, items[ "main" ].Size.Offset.X - 20, items[ "main" ].Size.Scale.Y, items[ "main" ].Size.Offset.Y - 20)
-                -- library:tween(items[ "tab_holder" ], {Size = dim2(1, -196, 1, -81)}, Enum.EasingStyle.Quad, 0.4)
-                -- cfg.tween = 
-                
+                if suffix ~= nil then
+                    cfg.suffix = tostring(suffix)
+                end
+
+                if items[ "title" ] then
+                    items[ "title" ].Text = cfg.name .. cfg.suffix
+                end
+            end
+
+            cfg.SetTitle = cfg.set_title
+            cfg.SetName = cfg.set_title
+
+            function cfg.toggle_menu(bool) 
+                bool = bool ~= false
                 cfg.menu_open = bool
-                library[ "items" ].Enabled = bool
+
+                if bool then
+                    library[ "items" ].Enabled = true
+                    items[ "main" ].Visible = true
+                    items[ "main" ].BackgroundTransparency = 0.16
+                    items[ "main_scale" ].Scale = 0.96
+
+                    library:tween(items[ "main" ], {BackgroundTransparency = 0}, Enum.EasingStyle.Quart, 0.24)
+                    library:tween(items[ "main_scale" ], {Scale = 1}, Enum.EasingStyle.Back, 0.28)
+                    return
+                end
+
+                library:tween(items[ "main" ], {BackgroundTransparency = 0.18}, Enum.EasingStyle.Quart, 0.18)
+                library:tween(items[ "main_scale" ], {Scale = 0.96}, Enum.EasingStyle.Quart, 0.18)
+
+                task.delay(0.18, function()
+                    if not cfg.menu_open and library[ "items" ] then
+                        library[ "items" ].Enabled = false
+                        items[ "main" ].Visible = true
+                        items[ "main" ].BackgroundTransparency = 0
+                        items[ "main_scale" ].Scale = 1
+                    end
+                end)
             end 
 
             library:connection(uis.InputBegan, function(input, game_event)
@@ -1081,6 +1310,13 @@
 
                 if menu_key_matches(input) then
                     cfg.toggle_menu(not cfg.menu_open)
+                end
+            end)
+
+            task.defer(function()
+                if items[ "main" ] and items[ "main" ].Parent then
+                    library:tween(items[ "main" ], {BackgroundTransparency = 0}, Enum.EasingStyle.Quart, 0.28)
+                    library:tween(items[ "main_scale" ], {Scale = 1}, Enum.EasingStyle.Back, 0.32)
                 end
             end)
                 
@@ -1122,6 +1358,7 @@
                     Visible = false;
                     BackgroundTransparency = 1;
                     Position = dim2(0, 140, 0, 56);
+                    ClipsDescendants = true;
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, -160, 1, -76);
                     BorderSizePixel = 0;
@@ -1321,6 +1558,7 @@
                                     Size = dim2(1, -20, 1, -20);
                                     BorderSizePixel = 0;
                                     Visible = false;
+                                    ClipsDescendants = true;
                                     BackgroundColor3 = rgb(255, 255, 255)
                                 });
                                 
@@ -1532,6 +1770,7 @@
                         BackgroundTransparency = 1;
                         Name = "\0";
                         Size = dim2(0,0,cfg.size,0);
+                        ClipsDescendants = true;
                         BorderColor3 = rgb(0, 0, 0);
                         BorderSizePixel = 0;
                         Visible = true;
@@ -1569,14 +1808,25 @@
                     Parent = self.items[ "column" ];
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(0, 0, cfg.size, -3);
+                    ClipsDescendants = true;
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(22, 22, 22)
+                    BackgroundTransparency = themes.preset.card_transparency;
+                    BackgroundColor3 = rgb(19, 19, 22)
                 });
 
                 library:create( "UICorner" , {
                     Parent = items[ "outline" ];
                     CornerRadius = dim(0, 7)
                 });
+
+                items[ "outline_stroke" ] = library:create( "UIStroke" , {
+                    Parent = items[ "outline" ];
+                    ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
+                    Color = rgb(56, 56, 64);
+                    Transparency = 0.32;
+                });
+
+                library:apply_card_transparency(items[ "outline" ], "BackgroundTransparency", 0)
                 
                 items[ "inline" ] = library:create( "Frame" , {
                     Parent = items[ "outline" ];
@@ -1584,14 +1834,18 @@
                     Position = dim2(0, 1, 0, 1);
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, -2, 1, -2);
+                    ClipsDescendants = true;
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(20, 20, 20)
+                    BackgroundTransparency = clamp(themes.preset.card_transparency + 0.04, 0, 1);
+                    BackgroundColor3 = rgb(16, 16, 18)
                 });
                 
                 library:create( "UICorner" , {
                     Parent = items[ "inline" ];
                     CornerRadius = dim(0, 7)
                 });
+
+                library:apply_card_transparency(items[ "inline" ], "BackgroundTransparency", 0.04)
                 
                 items[ "scrolling" ] = library:create( "ScrollingFrame" , {
                     ScrollBarImageColor3 = rgb(44, 44, 44);
@@ -1644,8 +1898,11 @@
                     Size = dim2(1, -2, 0, 35);
                     BorderSizePixel = 0;
                     TextSize = 16;
-                    BackgroundColor3 = rgb(22, 22, 22)
+                    BackgroundTransparency = clamp(themes.preset.card_transparency + 0.06, 0, 1);
+                    BackgroundColor3 = rgb(19, 19, 22)
                 });
+
+                library:apply_card_transparency(items[ "button" ], "BackgroundTransparency", 0.06)
                 
                 library:create( "UIStroke" , {
                     Color = rgb(48, 48, 48);
@@ -1794,6 +2051,9 @@
                 end 
             end 
 
+            library:register_searchable(cfg, cfg.name)
+            library:refresh_search()
+
             return setmetatable(cfg, library)
         end  
 
@@ -1816,6 +2076,7 @@
                 seperator = library:option(options, {"seperator", "Seperator", "separator", "Separator"}, false);
             }
 
+            library:append_search_text(self, cfg.name)
             flags[cfg.flag] = cfg.default
 
             local items = cfg.items; do
@@ -2083,6 +2344,7 @@
                 items = {}
             } 
 
+            library:append_search_text(self, cfg.name)
             flags[cfg.flag] = cfg.default
 
             local items = cfg.items; do
@@ -2314,6 +2576,7 @@
 
             local default = library:option(options, {"default", "Default"}, nil)
             cfg.default = default ~= nil and default or (cfg.multi and {cfg.options[1]}) or cfg.options[1] or "None"
+            library:append_search_text(self, cfg.name)
             flags[cfg.flag] = cfg.default
 
             local items = cfg.items; do 
@@ -2627,6 +2890,7 @@
                 items = {};
             }
 
+            library:append_search_text(self, cfg.name)
             local items = cfg.items; do 
                 items[ "label" ] = library:create( "TextButton" , {
                     FontFace = fonts.small;
@@ -2799,6 +3063,7 @@
             local h, s, v = cfg.color:ToHSV() 
             local a = cfg.alpha 
 
+            library:append_search_text(self, cfg.name)
             flags[cfg.flag] = {Color = cfg.color, Transparency = cfg.alpha}
 
             local label; 
@@ -3270,9 +3535,10 @@
                 items = {};
             }
 
+            library:append_search_text(self, cfg.name)
             flags[cfg.flag] = cfg.default
 
-            local items = cfg.items; do 
+            local items = cfg.items; do
                 items[ "textbox" ] = library:create( "TextButton" , {
                     LayoutOrder = -1;
                     FontFace = fonts.font;
@@ -3422,6 +3688,7 @@
                 items = {};
             }
 
+            library:append_search_text(self, cfg.name)
             flags[cfg.flag] = {
                 mode = cfg.mode,
                 key = cfg.key, 
@@ -3751,6 +4018,7 @@
                 items = {};
             }
             
+            library:append_search_text(self, cfg.name)
             local items = cfg.items; do 
                 items[ "button_element" ] = library:create( "Frame" , {
                     Parent = self.items[ "elements" ];
@@ -4081,7 +4349,13 @@
                 library:update_config_list()
                 notifications:create_notification({name = "Configs", info = "Deleted config:\n" .. name})
             end})
-            section:colorpicker({name = "Theme Color", info = "Changes the menu accent color.", callback = function(color, alpha) library:update_theme("accent", color) end, color = themes.preset.accent})
+            section:dropdown({name = "Theme Preset", info = "Applies a built-in Mono color preset.", flag = "theme_preset", options = {"Mono", "Graphite", "Mint", "Rose", "Amber"}, default = library.current_theme or "Mono", callback = function(theme_name)
+                library:apply_theme_preset(theme_name)
+            end})
+            section:slider({name = "Card Transparency", info = "Controls only section/card transparency.", flag = "card_transparency", min = 0, max = 0.35, interval = 0.01, default = themes.preset.card_transparency, callback = function(value)
+                library:update_card_transparency(value)
+            end})
+            section:colorpicker({name = "Accent Color", info = "Changes the menu accent color.", callback = function(color, alpha) library:update_theme("accent", color) end, color = themes.preset.accent})
             section:keybind({name = "Menu Bind", info = "Sets the key used to show or hide the menu.", flag = "menu_bind", key = window.menu_key or Enum.KeyCode.Insert, mode = "Toggle", callback = function()
                 local bind = flags["menu_bind"]
                 if window.set_menu_key and type(bind) == "table" then
@@ -5159,6 +5433,10 @@ library.Button = library.button
 library.Settings = library.settings
 library.List = library.list
 library.InitConfig = library.init_config
+library.ApplyThemePreset = library.apply_theme_preset
+library.UpdateTheme = library.update_theme
+library.UpdateCardTransparency = library.update_card_transparency
+library.SetSearch = library.set_search
 library.EspPreview = library.esp_preview
 library.ESPPreview = library.esp_preview
 
