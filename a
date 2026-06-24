@@ -1,3 +1,4 @@
+ 
     local uis = game:GetService("UserInputService") 
     local players = game:GetService("Players") 
     local ws = game:GetService("Workspace")
@@ -55,7 +56,9 @@
     local find = table.find 
     local remove = table.remove
     local concat = table.concat
+-- 
 
+-- Library init
     getgenv().library = {
         directory = "ui",
         folders = {
@@ -149,6 +152,8 @@
     local flags = library.flags 
     local config_flags = library.config_flags
     local notifications = library.notifications 
+    library.Flags = flags
+    library.ConfigFlags = config_flags
 
     local fonts = {}; do
         function Register_Font(Name, Weight, Style, Asset)
@@ -192,7 +197,10 @@
             font = Font.new(SemiBold, Enum.FontWeight.Regular, Enum.FontStyle.Normal);
         }
     end
+--
 
+-- Library functions 
+    -- Misc functions
         function library:tween(obj, properties, easing_style, time) 
             local tween = tween_service:Create(obj, TweenInfo.new(time or 0.25, easing_style or Enum.EasingStyle.Quint, Enum.EasingDirection.InOut, 0, false, 0), properties):Play()
                 
@@ -347,10 +355,17 @@
             for part in string.gmatch(enum, "[%w_]+") do
                 insert(enum_parts, part)
             end
+
+            if #enum_parts == 1 then
+                return Enum.KeyCode[enum_parts[1]] or Enum.UserInputType[enum_parts[1]]
+            end
         
             local enum_table = Enum
             for i = 2, #enum_parts do
                 local enum_item = enum_table[enum_parts[i]]
+                if enum_item == nil then
+                    return
+                end
         
                 enum_table = enum_item
             end
@@ -367,8 +382,10 @@
             local list = {}
             
             for idx, file in listfiles(library.directory .. "/configs") do
-                local name = file:gsub(library.directory .. "/configs\\", ""):gsub(".cfg", ""):gsub(library.directory .. "\\configs\\", "")
-                list[#list + 1] = name
+                local name = file:match("[^/\\]+$") or file
+                if name:sub(-4) == ".cfg" then
+                    list[#list + 1] = name:gsub("%.cfg$", "")
+                end
             end
 
             config_holder.refresh_options(list)
@@ -391,7 +408,14 @@
         end
 
         function library:load_config(config_json) 
-            local config = http_service:JSONDecode(config_json)
+            local decoded, config = pcall(function()
+                return http_service:JSONDecode(config_json)
+            end)
+
+            if not decoded or type(config) ~= "table" then
+                notifications:create_notification({name = "Configs", info = "Failed to parse config."})
+                return
+            end
             
             for _, v in config do 
                 local function_set = library.config_flags[_]
@@ -564,7 +588,100 @@
             return ins 
         end
 
+        function library:option(options, keys, fallback)
+            if not options then
+                return fallback
+            end
+
+            for _, key in keys do
+                local value = options[key]
+                if value ~= nil then
+                    return value
+                end
+            end
+
+            return fallback
+        end
+
+        function library:safe_callback(callback, ...)
+            if type(callback) ~= "function" then
+                return false
+            end
+
+            local ok, result = pcall(callback, ...)
+            if not ok then
+                warn("[Mono UI] callback error:", result)
+            end
+
+            return ok, result
+        end
+
+        function library:SafeCallback(callback, ...)
+            return library:safe_callback(callback, ...)
+        end
+
+        function library:SetVisibility(visible)
+            if type(self) ~= "table" or type(self.items) ~= "table" then
+                return
+            end
+
+            local roots = {
+                "toggle",
+                "toggle_object",
+                "slider_object",
+                "dropdown_object",
+                "label",
+                "label_element",
+                "keybind_element",
+                "button_element",
+                "textbox",
+                "colorpicker",
+                "settings",
+                "list",
+                "outline",
+            }
+
+            for _, key in roots do
+                local item = self.items[key]
+                if typeof(item) == "Instance" and item:IsA("GuiObject") then
+                    item.Visible = visible
+                end
+            end
+        end
+
+        library.SetVisible = library.SetVisibility
+
+        function library:OnUnload(callback)
+            library.on_unload = callback
+        end
+
+        function library:notify(options, lifetime)
+            local payload
+            if type(options) == "table" then
+                payload = {
+                    name = options.name or options.Name or options.title or options.Title or "Notification",
+                    info = options.info or options.Info or options.content or options.Content or options.text or options.Text or "",
+                    lifetime = options.lifetime or options.Lifetime or options.duration or options.Duration or lifetime or 3,
+                }
+            else
+                payload = {
+                    name = "Notification",
+                    info = tostring(options or ""),
+                    lifetime = lifetime or 3,
+                }
+            end
+
+            return notifications:create_notification(payload)
+        end
+
         function library:unload_menu() 
+            if library.unloaded then
+                return
+            end
+
+            library.unloaded = true
+            library:safe_callback(library.on_unload)
+
             if library[ "items" ] then 
                 library[ "items" ]:Destroy()
             end
@@ -575,12 +692,16 @@
             
             for index, connection in library.connections do 
                 connection:Disconnect() 
-                connection = nil 
+                library.connections[index] = nil 
             end
-            
-            library = nil 
         end 
 
+        library.Unload = library.unload_menu
+        library.Destroy = library.unload_menu
+        library.Notify = library.notify
+    --
+    
+    -- Library element functions
         function library:window(properties)
             local cfg = { 
                 suffix = properties.suffix or properties.Suffix or "";
@@ -913,7 +1034,7 @@
                 }); library:apply_theme(items[ "other_info" ], "accent", "TextColor3");        
             end 
 
-            do
+            do -- Other
                 library:draggify(items[ "main" ])
                 library:resizify(items[ "main" ])
             end 
@@ -940,7 +1061,15 @@
             end
 
             function cfg.toggle_menu(bool) 
+                -- WIP 
+                -- if cfg.tween then 
+                --     cfg.tween:Cancel()
+                -- end 
 
+                -- items[ "main" ].Size = dim2(items[ "main" ].Size.Scale.X, items[ "main" ].Size.Offset.X - 20, items[ "main" ].Size.Scale.Y, items[ "main" ].Size.Offset.Y - 20)
+                -- library:tween(items[ "tab_holder" ], {Size = dim2(1, -196, 1, -81)}, Enum.EasingStyle.Quad, 0.4)
+                -- cfg.tween = 
+                
                 cfg.menu_open = bool
                 library[ "items" ].Enabled = bool
             end 
@@ -964,8 +1093,9 @@
                 icon = properties.icon or properties.Icon or "http://www.roblox.com/asset/?id=6034767608";
                 group = properties.group or properties.Group;
                 
+                -- multi 
                 tabs = properties.tabs or properties.Tabs or {"Main", "Misc.", "Settings"};
-                pages = {};
+                pages = {}; -- data store for multi sections
                 current_multi; 
                 
                 items = {};
@@ -998,6 +1128,7 @@
                     BackgroundColor3 = rgb(255, 255, 255)
                 });
                 
+                -- Tab buttons 
                     items[ "button" ] = library:create( "TextButton" , {
                         FontFace = fonts.font;
                         TextColor3 = rgb(255, 255, 255);
@@ -1078,7 +1209,9 @@
                         Enabled = false;
                         ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                     });
+                -- 
 
+                -- Multi Sections
                     items[ "multi_section_button_holder" ] = library:create( "Frame" , {
                         Parent = library.cache;
                         BackgroundTransparency = 1;
@@ -1109,7 +1242,7 @@
                         local data = {items = {}} 
 
                         local multi_items = data.items; do 
-
+                            -- Button
                                 multi_items[ "button" ] = library:create( "TextButton" , {
                                     FontFace = fonts.font;
                                     TextColor3 = rgb(255, 255, 255);
@@ -1177,7 +1310,9 @@
                                     Parent = multi_items[ "button" ];
                                     CornerRadius = dim(0, 7)
                                 }); 
+                            --
 
+                            -- Tab 
                                 multi_items[ "tab" ] = library:create( "Frame" , {
                                     Parent = library.cache;
                                     BackgroundTransparency = 1;
@@ -1205,7 +1340,7 @@
                                     PaddingRight = dim(0, 7);
                                     PaddingLeft = dim(0, 7)
                                 });
-
+                            --
                         end
 
                         data.text = multi_items[ "name" ]
@@ -1214,6 +1349,10 @@
                         data.page = multi_items[ "tab" ]
                         data.parent = setmetatable(data, library):sub_tab({}).items[ "tab_parent" ]
                         
+                        -- Old column code
+                        -- data.left = multi_items[ "left" ]
+                        -- data.right = multi_items[ "right" ]
+
 						function data.open_page()
 							local page = cfg.current_multi; 
                             
@@ -1256,7 +1395,7 @@
                     end 
 
                     cfg.pages[1].open_page()
-
+                --
             end 
 
             function cfg.open_tab() 
@@ -1352,6 +1491,7 @@
             return setmetatable(cfg, library)
         end 
 
+        -- Miscellaneous 
             function library:column(properties) 
                 local cfg = {items = {}, size = properties.size or 1}
 
@@ -1410,15 +1550,16 @@
 
                 return setmetatable(cfg, library)
             end 
+        --
 
         function library:section(properties)
             local cfg = {
                 name = properties.name or properties.Name or "section"; 
                 side = properties.side or properties.Side or "left";
-                default = properties.default or properties.Default or false;
+                default = library:option(properties, {"default", "Default"}, false);
                 size = properties.size or properties.Size or self.size or 0.5; 
                 icon = properties.icon or properties.Icon or "http://www.roblox.com/asset/?id=6022668898";
-                fading_toggle = properties.fading or properties.Fading or false;
+                fading_toggle = library:option(properties, {"fading", "Fading"}, false);
                 items = {};
             };
             
@@ -1658,20 +1799,21 @@
 
         function library:toggle(options) 
             local rand = math.random(1, 2) 
+            local toggle_type = library:option(options, {"type", "Type"}, nil)
             local cfg = {
-                enabled = options.enabled or nil,
-                name = options.name or "Toggle",
-                info = options.info or nil,
-                flag = options.flag or library:next_flag(),
+                enabled = library:option(options, {"enabled", "Enabled"}, nil),
+                name = library:option(options, {"name", "Name"}, "Toggle"),
+                info = library:option(options, {"info", "Info", "description", "Description"}, nil),
+                flag = library:option(options, {"flag", "Flag"}, nil) or library:next_flag(),
                 
-                type = options.type and string.lower(options.type) or rand == 1 and "toggle" or "checkbox";
+                type = toggle_type and string.lower(toggle_type) or rand == 1 and "toggle" or "checkbox"; -- "toggle", "checkbox"
 
-                default = options.default or false,
-                folding = options.folding or false, 
-                callback = options.callback or function() end,
+                default = library:option(options, {"default", "Default"}, false),
+                folding = library:option(options, {"folding", "Folding"}, false), 
+                callback = library:option(options, {"callback", "Callback"}, function() end),
 
                 items = {};
-                seperator = options.seperator or options.Seperator or false;
+                seperator = library:option(options, {"seperator", "Seperator", "separator", "Separator"}, false);
             }
 
             flags[cfg.flag] = cfg.default
@@ -1752,6 +1894,7 @@
                     SortOrder = Enum.SortOrder.LayoutOrder
                 });
                 
+                -- Toggle
                     if cfg.type == "checkbox" then 
                         items[ "toggle_button" ] = library:create( "TextButton" , {
                             FontFace = fonts.small;
@@ -1868,7 +2011,7 @@
                             CornerRadius = dim(0, 999)
                         });                        
                     end 
-
+                --                
             end;
             
             function cfg.set(bool)
@@ -1883,7 +2026,7 @@
                 end
 
                 flags[cfg.flag] = bool
-                cfg.callback(bool)
+                library:safe_callback(cfg.callback, bool)
 
                 if cfg.folding then 
                     elements.Visible = bool
@@ -1900,7 +2043,7 @@
                 cfg.set(cfg.enabled)
             end)
             
-            if cfg.seperator then
+            if cfg.seperator then -- ok bro my lua either sucks or this was a pain in the ass to make (simple if statement aswell ?뮅)
                 library:create( "Frame" , {
                     AnchorPoint = vec2(0, 1);
                     Parent = self.items[ "elements" ];
@@ -1922,18 +2065,19 @@
         
         function library:slider(options) 
             local cfg = {
-                name = options.name or nil,
-                suffix = options.suffix or "",
-                flag = options.flag or library:next_flag(),
-                callback = options.callback or function() end, 
-                info = options.info or nil; 
+                name = library:option(options, {"name", "Name"}, nil),
+                suffix = library:option(options, {"suffix", "Suffix"}, ""),
+                flag = library:option(options, {"flag", "Flag"}, nil) or library:next_flag(),
+                callback = library:option(options, {"callback", "Callback"}, function() end), 
+                info = library:option(options, {"info", "Info", "description", "Description"}, nil); 
 
-                min = options.min or options.minimum or 0,
-                max = options.max or options.maximum or 100,
-                intervals = options.interval or options.decimal or 1,
-                default = options.default or 10,
-                value = options.default or 10, 
-                seperator = options.seperator or options.Seperator or true;
+                -- value settings
+                min = library:option(options, {"min", "Min", "minimum", "Minimum"}, 0),
+                max = library:option(options, {"max", "Max", "maximum", "Maximum"}, 100),
+                intervals = library:option(options, {"interval", "Interval", "decimal", "Decimal"}, 1),
+                default = library:option(options, {"default", "Default"}, 10),
+                value = library:option(options, {"default", "Default"}, 10), 
+                seperator = library:option(options, {"seperator", "Seperator", "separator", "Separator"}, true);
 
                 dragging = false,
                 items = {}
@@ -2104,7 +2248,7 @@
                 items[ "value" ].Text = tostring(cfg.value) .. cfg.suffix
 
                 flags[cfg.flag] = cfg.value
-                cfg.callback(flags[cfg.flag])
+                library:safe_callback(cfg.callback, flags[cfg.flag])
             end
 
             items[ "slider" ].MouseButton1Down:Connect(function()
@@ -2148,30 +2292,32 @@
 
         function library:dropdown(options) 
             local cfg = {
-                name = options.name or nil;
-                info = options.info or nil;
-                flag = options.flag or library:next_flag();
-                options = options.items or options.options or {""};
-                callback = options.callback or function() end;
-                multi = options.multi or false;
-                scrolling = options.scrolling or false;
+                name = library:option(options, {"name", "Name"}, nil);
+                info = library:option(options, {"info", "Info", "description", "Description"}, nil);
+                flag = library:option(options, {"flag", "Flag"}, nil) or library:next_flag();
+                options = library:option(options, {"items", "Items", "options", "Options", "values", "Values"}, {""});
+                callback = library:option(options, {"callback", "Callback"}, function() end);
+                multi = library:option(options, {"multi", "Multi"}, false);
+                scrolling = library:option(options, {"scrolling", "Scrolling"}, false);
 
-                width = options.width or 130;
+                width = library:option(options, {"width", "Width"}, 130);
 
+                -- Ignore these 
                 open = false;
                 option_instances = {};
                 multi_items = {};
-                ignore = options.ignore or false;
+                ignore = library:option(options, {"ignore", "Ignore"}, false);
                 items = {};
                 y_size;
-                seperator = options.seperator or options.Seperator or true;
+                seperator = library:option(options, {"seperator", "Seperator", "separator", "Separator"}, true);
             }   
 
-            cfg.default = options.default or (cfg.multi and {cfg.options[1]}) or cfg.options[1] or "None"
+            local default = library:option(options, {"default", "Default"}, nil)
+            cfg.default = default ~= nil and default or (cfg.multi and {cfg.options[1]}) or cfg.options[1] or "None"
             flags[cfg.flag] = cfg.default
 
             local items = cfg.items; do 
-
+                -- Element
                     items[ "dropdown_object" ] = library:create( "TextButton" , {
                         FontFace = fonts.small;
                         TextColor3 = rgb(0, 0, 0);
@@ -2305,7 +2451,9 @@
                         BorderSizePixel = 0;
                         BackgroundColor3 = rgb(255, 255, 255)
                     });
+                -- 
 
+                -- Element Holder
                     items[ "dropdown_holder" ] = library:create( "Frame" , {
                         BorderColor3 = rgb(0, 0, 0);
                         Parent = library[ "items" ];
@@ -2345,7 +2493,7 @@
                         Parent = items[ "outline" ];
                         CornerRadius = dim(0, 4)
                     });
-
+                -- 
             end 
 
             function cfg.render_option(text)
@@ -2403,7 +2551,7 @@
                 items[ "sub_text" ].Text = isTable and concat(selected, ", ") or selected[1] or ""
                 flags[cfg.flag] = isTable and selected or selected[1]
                 
-                cfg.callback(flags[cfg.flag]) 
+                library:safe_callback(cfg.callback, flags[cfg.flag]) 
             end
             
             function cfg.refresh_options(list) 
@@ -2417,7 +2565,7 @@
 
                 for _, option in list do 
                     local button = cfg.render_option(option)
-                    cfg.y_size += button.AbsoluteSize.Y + 6
+                    cfg.y_size += button.AbsoluteSize.Y + 6 -- super annoying manual sizing but oh well
                     insert(cfg.option_instances, button)
                     
                     button.MouseButton1Down:Connect(function()
@@ -2471,10 +2619,10 @@
 
         function library:label(options)
             local cfg = {
-                enabled = options.enabled or nil,
-                name = options.name or "Toggle",
-                seperator = options.seperator or options.Seperator or false;
-                info = options.info or nil; 
+                enabled = library:option(options, {"enabled", "Enabled"}, nil),
+                name = library:option(options, {"name", "Name", "text", "Text"}, "Toggle"),
+                seperator = library:option(options, {"seperator", "Seperator", "separator", "Separator"}, false);
+                info = library:option(options, {"info", "Info", "description", "Description"}, nil); 
 
                 items = {};
             }
@@ -2569,23 +2717,79 @@
             end 
 
             library:tooltip(items[ "label" ], cfg.info)
+            
+            function cfg.set_text(text)
+                cfg.name = tostring(text or "")
+                items[ "name" ].Text = cfg.name
+            end
+
+            function cfg:SetText(text)
+                cfg.set_text(text)
+            end
+
+            cfg.Set = cfg.SetText
+
             return setmetatable(cfg, library)
-        end 
-        
+        end
+
+        function library:paragraph(options)
+            options = options or {}
+
+            local title = library:option(options, {"title", "Title", "name", "Name"}, "Paragraph")
+            local content = library:option(options, {"content", "Content", "text", "Text"}, "")
+            local text = tostring(title or "")
+
+            if content and tostring(content) ~= "" then
+                text ..= "\n" .. tostring(content)
+            end
+
+            local cfg = self:label({
+                name = text,
+                info = library:option(options, {"info", "Info", "description", "Description"}, nil),
+                seperator = library:option(options, {"seperator", "Seperator", "separator", "Separator"}, false),
+            })
+
+            cfg.items[ "name" ].TextWrapped = true
+            cfg.items[ "name" ].Size = dim2(1, -10, 0, 0)
+
+            function cfg:Set(options_or_text)
+                if type(options_or_text) == "table" then
+                    local new_title = library:option(options_or_text, {"title", "Title", "name", "Name"}, title)
+                    local new_content = library:option(options_or_text, {"content", "Content", "text", "Text"}, content)
+                    local new_text = tostring(new_title or "")
+                    title = new_title
+                    content = new_content
+
+                    if new_content and tostring(new_content) ~= "" then
+                        new_text ..= "\n" .. tostring(new_content)
+                    end
+
+                    cfg.set_text(new_text)
+                    return
+                end
+
+                cfg.set_text(options_or_text)
+            end
+
+            return cfg
+        end
+
+        library.Paragraph = library.paragraph
+
         function library:colorpicker(options) 
             local cfg = {
-                name = options.name or "Color", 
-                flag = options.flag or library:next_flag(),
-                info = options.info or nil,
+                name = library:option(options, {"name", "Name"}, "Color"), 
+                flag = library:option(options, {"flag", "Flag"}, nil) or library:next_flag(),
+                info = library:option(options, {"info", "Info", "description", "Description"}, nil),
 
-                color = options.color or color(1, 1, 1),
-                alpha = options.alpha and 1 - options.alpha or 0,
+                color = library:option(options, {"color", "Color", "default", "Default"}, color(1, 1, 1)), -- Default to white color if not provided
+                alpha = library:option(options, {"alpha", "Alpha"}, nil) and 1 - library:option(options, {"alpha", "Alpha"}, nil) or 0,
                 
                 open = false, 
-                callback = options.callback or function() end,
+                callback = library:option(options, {"callback", "Callback"}, function() end),
                 items = {};
 
-                seperator = options.seperator or options.Seperator or false;
+                seperator = library:option(options, {"seperator", "Seperator", "separator", "Separator"}, false);
             }
 
             local dragging_sat = false 
@@ -2603,7 +2807,7 @@
             end
 
             local items = cfg.items; do 
-
+                -- Component
                     items[ "colorpicker" ] = library:create( "TextButton" , {
                         FontFace = fonts.small;
                         TextColor3 = rgb(0, 0, 0);
@@ -2645,7 +2849,9 @@
                         Color = rgbseq{rgbkey(0, rgb(211, 211, 211)), rgbkey(1, rgb(211, 211, 211))};
                         Parent = items[ "colorpicker_inline" ]
                     });         
-
+                --
+                
+                -- Colorpicker
                     items[ "colorpicker_holder" ] = library:create( "Frame" , {
                         Parent = library[ "other" ];
                         Name = "\0";
@@ -2916,12 +3122,12 @@
                         CornerRadius = dim(0, 3)
                     });
                     
-                    items[ "UICorenr" ] = library:create( "UICorner" , {
+                    items[ "UICorenr" ] = library:create( "UICorner" , { -- fire misstypo (im not fixing this RAWR)
                         Parent = items[ "colorpicker_holder" ];
                         Name = "\0";
                         CornerRadius = dim(0, 4)
                     });
-
+                --                  
             end;
 
             function cfg.set_visible(bool)
@@ -2930,7 +3136,7 @@
                 items[ "colorpicker_holder" ].Position = dim_offset(items[ "colorpicker" ].AbsolutePosition.X, items[ "colorpicker" ].AbsolutePosition.Y + items[ "colorpicker" ].AbsoluteSize.Y + 45)
 
                 library:tween(items[ "colorpicker_fade" ], {BackgroundTransparency = 1}, Enum.EasingStyle.Quad, 0.4)
-                library:tween(items[ "colorpicker_holder" ], {Position = items[ "colorpicker_holder" ].Position + dim_offset(0, 20)})
+                library:tween(items[ "colorpicker_holder" ], {Position = items[ "colorpicker_holder" ].Position + dim_offset(0, 20)}) -- p100 check
                 
                 if not (self.sanity and library.current_open == self and self.open) then 
                     library:close_element(cfg)
@@ -2952,11 +3158,13 @@
                 
                 local Color = hsv(h, s, v)
 
+                -- Ok so quick story, should I cache any of this? no...?? anyways I know this code is very bad but its your fault for buying a ui with animations (on a serious note im too lazy to make this look nice)
+                -- Also further note, yeah I kind of did this scale_factor * size-valuesize.plane because then I would have to do tomfoolery to make it clip properly.
                 library:tween(items[ "hue_picker" ], {Position = dim2(0, (items[ "hue_gradient" ].AbsoluteSize.X - items[ "hue_picker" ].AbsoluteSize.X) * h, 0.5, 0)}, Enum.EasingStyle.Linear, 0.05)
                 library:tween(items[ "alpha_picker" ], {Position = dim2(0, (items[ "alpha_gradient" ].AbsoluteSize.X - items[ "alpha_picker" ].AbsoluteSize.X) * (1 - a), 0.5, 0)}, Enum.EasingStyle.Linear, 0.05)
                 library:tween(items[ "satvalpicker" ], {Position = dim2(0, s * (items[ "saturation_holder" ].AbsoluteSize.X - items[ "satvalpicker" ].AbsoluteSize.X), 1, 1 - v * (items[ "saturation_holder" ].AbsoluteSize.Y - items[ "satvalpicker" ].AbsoluteSize.Y))}, Enum.EasingStyle.Linear, 0.05)
 
-                items[ "alpha_indicator" ]:FindFirstChildOfClass("UIGradient").Color = rgbseq{rgbkey(0, rgb(112, 112, 112)), rgbkey(1, hsv(h, 1, 1))};
+                items[ "alpha_indicator" ]:FindFirstChildOfClass("UIGradient").Color = rgbseq{rgbkey(0, rgb(112, 112, 112)), rgbkey(1, hsv(h, 1, 1))}; -- shit code
                 
                 items[ "colorpicker" ].BackgroundColor3 = Color
                 items[ "colorpicker_inline" ].BackgroundColor3 = Color
@@ -2975,7 +3183,7 @@
                 items[ "input" ].Text = string.format("%s, %s, %s, ", library:round(color.R * 255), library:round(color.G * 255), library:round(color.B * 255))
                 items[ "input" ].Text ..= library:round(1 - a, 0.01)
                 
-                cfg.callback(Color, a)
+                library:safe_callback(cfg.callback, Color, a)
             end
             
             function cfg.update_color() 
@@ -3000,7 +3208,7 @@
                 cfg.set_visible(cfg.open)            
             end)
 
-            uis.InputChanged:Connect(function(input)
+            library:connection(uis.InputChanged, function(input)
                 if (dragging_sat or dragging_hue or dragging_alpha) and input.UserInputType == Enum.UserInputType.MouseMovement then
                     cfg.update_color() 
                 end
@@ -3052,13 +3260,13 @@
 
         function library:textbox(options) 
             local cfg = {
-                name = options.name or "TextBox",
-                info = options.info or nil,
-                placeholder = options.placeholder or options.placeholdertext or options.holder or options.holdertext or "type here...",
-                default = options.default or "",
-                flag = options.flag or library:next_flag(),
-                callback = options.callback or function() end,
-                visible = options.visible or true,
+                name = library:option(options, {"name", "Name"}, "TextBox"),
+                info = library:option(options, {"info", "Info", "description", "Description"}, nil),
+                placeholder = library:option(options, {"placeholder", "Placeholder", "placeholdertext", "PlaceholderText", "holder", "Holder", "holdertext", "HolderText"}, "type here..."),
+                default = library:option(options, {"default", "Default"}, ""),
+                flag = library:option(options, {"flag", "Flag"}, nil) or library:next_flag(),
+                callback = library:option(options, {"callback", "Callback"}, function() end),
+                visible = library:option(options, {"visible", "Visible"}, true),
                 items = {};
             }
 
@@ -3073,6 +3281,7 @@
                     Text = "";
                     Parent = self.items[ "elements" ];
                     Name = "\0";
+                    Visible = cfg.visible;
                     BackgroundTransparency = 1;
                     Size = dim2(1, 0, 0, 0);
                     BorderSizePixel = 0;
@@ -3157,7 +3366,7 @@
 
                 items[ "input" ].Text = text
 
-                cfg.callback(text)
+                library:safe_callback(cfg.callback, text)
             end 
             
             items[ "input" ]:GetPropertyChangedSignal("Text"):Connect(function()
@@ -3183,16 +3392,28 @@
         end
 
         function library:keybind(options) 
-            local cfg = {
-                flag = options.flag or library:next_flag(),
-                callback = options.callback or function() end,
-                name = options.name or nil, 
-                info = options.info or nil,
-                ignore_key = options.ignore or false, 
+            local default = library:option(options, {"default", "Default"}, nil)
+            local key = library:option(options, {"key", "Key"}, nil)
+            local active = library:option(options, {"active", "Active"}, nil)
 
-                key = options.key or nil, 
-                mode = options.mode or "Toggle",
-                active = options.default or false, 
+            if key == nil and default ~= nil and type(default) ~= "boolean" then
+                key = default
+            end
+
+            if active == nil and type(default) == "boolean" then
+                active = default
+            end
+
+            local cfg = {
+                flag = library:option(options, {"flag", "Flag"}, nil) or library:next_flag(),
+                callback = library:option(options, {"callback", "Callback"}, function() end),
+                name = library:option(options, {"name", "Name"}, nil), 
+                info = library:option(options, {"info", "Info", "description", "Description"}, nil),
+                ignore_key = library:option(options, {"ignore", "Ignore"}, false), 
+
+                key = key, 
+                mode = library:option(options, {"mode", "Mode"}, "Toggle"),
+                active = active or false, 
 
                 open = false,
                 binding = nil, 
@@ -3208,7 +3429,7 @@
             }
 
             local items = cfg.items; do 
-
+                -- Component
                     items[ "keybind_element" ] = library:create( "TextButton" , {
                         FontFace = fonts.font;
                         TextColor3 = rgb(0, 0, 0);
@@ -3308,7 +3529,9 @@
                         PaddingRight = dim(0, 5);
                         PaddingLeft = dim(0, 5)
                     });                                  
-
+                -- 
+                
+                -- Mode Holder
                     items[ "dropdown" ] = library:create( "Frame" , {
                         BorderColor3 = rgb(0, 0, 0);
                         Parent = library.items;
@@ -3387,10 +3610,10 @@
                             cfg.open = false
                         end)
                     end
-
+                -- 
             end 
             
-            function cfg.modify_mode_color(path)
+            function cfg.modify_mode_color(path) -- ts so frikin tuff ??
                 for _, v in cfg.hold_instances do 
                     v.TextColor3 = rgb(72, 72, 72)
                 end 
@@ -3454,7 +3677,7 @@
                     active = cfg.active
                 }
 
-                cfg.callback(cfg.active)
+                library:safe_callback(cfg.callback, cfg.active)
             end
 
             function cfg.set_visible(bool)
@@ -3522,9 +3745,9 @@
 
         function library:button(options) 
             local cfg = {
-                name = options.name or "TextBox",
-                info = options.info or nil,
-                callback = options.callback or function() end,
+                name = library:option(options, {"name", "Name"}, "TextBox"),
+                info = library:option(options, {"info", "Info", "description", "Description"}, nil),
+                callback = library:option(options, {"callback", "Callback"}, function() end),
                 items = {};
             }
             
@@ -3574,11 +3797,11 @@
                     AutomaticSize = Enum.AutomaticSize.XY;
                     TextSize = 14;
                     BackgroundColor3 = rgb(255, 255, 255)
-                }); library:apply_theme(items[ "name" ], "accent", "BackgroundColor3");                            
+                }); library:apply_theme(items[ "name" ], "accent", "TextColor3");                            
             end 
 
             items[ "button" ].MouseButton1Click:Connect(function()
-                cfg.callback()
+                library:safe_callback(cfg.callback)
 
                 items[ "name" ].TextColor3 = themes.preset.accent 
                 library:tween(items[ "name" ], {TextColor3 = rgb(245, 245, 245)})
@@ -3593,7 +3816,7 @@
             local cfg = {
                 open = false; 
                 items = {}; 
-                sanity = true;
+                sanity = true; -- made this for my own sanity.
             }
 
             local items = cfg.items; do 
@@ -3687,9 +3910,9 @@
         function library:list(properties) 
             local cfg = {
                 items = {};
-                options = properties.options or {"1", "2", "3"};
-                flag = properties.flag or library:next_flag();    
-                callback = properties.callback or function() end;
+                options = library:option(properties, {"options", "Options", "items", "Items", "values", "Values"}, {"1", "2", "3"});
+                flag = library:option(properties, {"flag", "Flag"}, nil) or library:next_flag();    
+                callback = library:option(properties, {"callback", "Callback"}, function() end);
                 data_store = {};        
                 current_element;
             }
@@ -3719,12 +3942,12 @@
                 });
             end 
 
-            function cfg.refresh_options(options_to_refresh)
+            function cfg.refresh_options(options_to_refresh) -- ignore goofy parameter
                 for _,option in cfg.data_store do 
                     option:Destroy()
                 end
 
-                for _, option_data in options_to_refresh do
+                for _, option_data in options_to_refresh do -- haha u skids no next >_<
                     local button = library:create( "TextButton" , {
                         FontFace = fonts.small;
                         TextColor3 = rgb(0, 0, 0);
@@ -3768,7 +3991,7 @@
                         end
 
                         flags[cfg.flag] = option_data
-                        cfg.callback(option_data)
+                        library:safe_callback(cfg.callback, option_data)
                         library:tween(name, {TextColor3 = rgb(245, 245, 245)})
                         cfg.current_element = name
                     end)
@@ -3805,10 +4028,59 @@
             
             local column = main:column({})
             local section = column:section({name = "Settings", side = "right", size = 1, default = true, icon = "rbxassetid://129380150574313"})
+
+            local function selected_config_name()
+                local text_name = flags["config_name_text"]
+                if type(text_name) == "string" then
+                    text_name = text_name:gsub("^%s+", ""):gsub("%s+$", "")
+                end
+
+                local name = type(text_name) == "string" and text_name ~= "" and text_name or flags["config_name_list"]
+                if type(name) ~= "string" or name == "" then
+                    return
+                end
+
+                return name:gsub("%.cfg$", "")
+            end
+
+            local function config_path(name)
+                return library.directory .. "/configs/" .. name .. ".cfg"
+            end
+
             section:textbox({name = "Config name:", flag = "config_name_text"})
-            section:button({name = "Save", callback = function() writefile(library.directory .. "/configs/" .. flags["config_name_text"] or flags["config_name_list"] .. ".cfg", library:get_config()) library:update_config_list() notifications:create_notification({name = "Configs", info = "Saved config to:\n" .. flags["config_name_list"] or flags["config_name_text"]}) end}) 
-            section:button({name = "Load", callback = function() library:load_config(readfile(library.directory .. "/configs/" .. flags["config_name_list"] .. ".cfg"))  library:update_config_list() notifications:create_notification({name = "Configs", info = "Loaded config:\n" .. flags["config_name_list"]}) end})
-            section:button({name = "Delete", callback = function() delfile(library.directory .. "/configs/" .. flags["config_name_list"] .. ".cfg")  library:update_config_list() notifications:create_notification({name = "Configs", info = "Deleted config:\n" .. flags["config_name_list"]}) end})
+            section:button({name = "Save", callback = function()
+                local name = selected_config_name()
+                if not name then
+                    notifications:create_notification({name = "Configs", info = "Enter or select a config name."})
+                    return
+                end
+
+                writefile(config_path(name), library:get_config())
+                library:update_config_list()
+                notifications:create_notification({name = "Configs", info = "Saved config:\n" .. name})
+            end}) 
+            section:button({name = "Load", callback = function()
+                local name = selected_config_name()
+                if not name or not isfile(config_path(name)) then
+                    notifications:create_notification({name = "Configs", info = "Config not found."})
+                    return
+                end
+
+                library:load_config(readfile(config_path(name)))
+                library:update_config_list()
+                notifications:create_notification({name = "Configs", info = "Loaded config:\n" .. name})
+            end})
+            section:button({name = "Delete", callback = function()
+                local name = selected_config_name()
+                if not name or not isfile(config_path(name)) then
+                    notifications:create_notification({name = "Configs", info = "Config not found."})
+                    return
+                end
+
+                delfile(config_path(name))
+                library:update_config_list()
+                notifications:create_notification({name = "Configs", info = "Deleted config:\n" .. name})
+            end})
             section:colorpicker({name = "Theme Color", info = "Changes the menu accent color.", callback = function(color, alpha) library:update_theme("accent", color) end, color = themes.preset.accent})
             section:keybind({name = "Menu Bind", info = "Sets the key used to show or hide the menu.", flag = "menu_bind", key = window.menu_key or Enum.KeyCode.Insert, mode = "Toggle", callback = function()
                 local bind = flags["menu_bind"]
@@ -3817,7 +4089,9 @@
                 end
             end, default = false})
         end
+    --
 
+    -- Notification Library
         function notifications:refresh_notifs() 
             local offset = 50
 
@@ -3973,7 +4247,9 @@
                 items[ "notification" ]:Destroy() 
             end)
         end
+    --
 
+    -- External ESP Preview
         function library:esp_preview(properties)
             properties = properties or {}
 
@@ -4859,5 +5135,31 @@
             library.esp_preview_window = cfg
             return setmetatable(cfg, library)
         end
+    --
+-- 
+
+library.Window = library.window
+library.Tab = library.tab
+library.Seperator = library.seperator
+library.Separator = library.seperator
+library.Column = library.column
+library.SubTab = library.sub_tab
+library.Section = library.section
+library.Toggle = library.toggle
+library.Slider = library.slider
+library.Dropdown = library.dropdown
+library.Label = library.label
+library.Colorpicker = library.colorpicker
+library.ColorPicker = library.colorpicker
+library.Textbox = library.textbox
+library.TextBox = library.textbox
+library.Keybind = library.keybind
+library.KeyBind = library.keybind
+library.Button = library.button
+library.Settings = library.settings
+library.List = library.list
+library.InitConfig = library.init_config
+library.EspPreview = library.esp_preview
+library.ESPPreview = library.esp_preview
 
 return library
