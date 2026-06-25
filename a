@@ -72,19 +72,27 @@
     }
 
     local themes = {
+        names = {"Nuke", "Graphite", "Arctic", "Ember", "Mint", "Rose"},
+
         preset = {
-            accent = rgb(255, 70, 70),
+            accent = rgb(125, 255, 120),
+            background = rgb(9, 11, 10),
+            surface = rgb(16, 19, 17),
+            card = rgb(19, 23, 20),
+            card_inner = rgb(14, 17, 15),
+            border = rgb(48, 62, 52),
             window_transparency = 0.24,
             panel_transparency = 0.28,
             card_transparency = 0.22,
         }, 
 
         presets = {
-            Mono = {accent = rgb(255, 70, 70), card_transparency = 0.22},
-            Graphite = {accent = rgb(125, 146, 255), card_transparency = 0.26},
-            Mint = {accent = rgb(80, 220, 165), card_transparency = 0.24},
-            Rose = {accent = rgb(255, 110, 155), card_transparency = 0.24},
-            Amber = {accent = rgb(255, 185, 90), card_transparency = 0.24},
+            Nuke = {accent = rgb(125, 255, 120), background = rgb(9, 11, 10), surface = rgb(16, 19, 17), card = rgb(19, 23, 20), card_inner = rgb(14, 17, 15), border = rgb(48, 62, 52), window_transparency = 0.24, panel_transparency = 0.28, card_transparency = 0.22},
+            Graphite = {accent = rgb(125, 146, 255), background = rgb(10, 11, 14), surface = rgb(17, 18, 23), card = rgb(21, 22, 29), card_inner = rgb(16, 17, 22), border = rgb(52, 55, 70), window_transparency = 0.24, panel_transparency = 0.28, card_transparency = 0.24},
+            Arctic = {accent = rgb(105, 205, 255), background = rgb(8, 12, 15), surface = rgb(14, 21, 26), card = rgb(18, 27, 33), card_inner = rgb(13, 19, 24), border = rgb(46, 69, 80), window_transparency = 0.25, panel_transparency = 0.3, card_transparency = 0.25},
+            Ember = {accent = rgb(255, 150, 85), background = rgb(15, 10, 8), surface = rgb(24, 17, 14), card = rgb(30, 20, 16), card_inner = rgb(21, 15, 13), border = rgb(78, 52, 41), window_transparency = 0.23, panel_transparency = 0.28, card_transparency = 0.23},
+            Mint = {accent = rgb(80, 220, 165), background = rgb(8, 13, 11), surface = rgb(14, 23, 20), card = rgb(17, 28, 24), card_inner = rgb(12, 20, 17), border = rgb(43, 72, 62), window_transparency = 0.25, panel_transparency = 0.3, card_transparency = 0.24},
+            Rose = {accent = rgb(255, 110, 155), background = rgb(15, 9, 12), surface = rgb(24, 15, 19), card = rgb(30, 18, 24), card_inner = rgb(21, 13, 17), border = rgb(78, 48, 60), window_transparency = 0.24, panel_transparency = 0.29, card_transparency = 0.24},
         },
 
         utility = {
@@ -95,9 +103,29 @@
                 ScrollBarImageColor3 = {},
                 Color = {},
             },
+            background = {
+                BackgroundColor3 = {},
+            },
+            surface = {
+                BackgroundColor3 = {},
+            },
+            card = {
+                BackgroundColor3 = {},
+            },
+            card_inner = {
+                BackgroundColor3 = {},
+            },
+            border = {
+                BackgroundColor3 = {},
+                Color = {},
+            },
+            window_transparency = {},
+            panel_transparency = {},
             card_transparency = {},
         }
     }
+
+    library.current_theme = "Nuke"
 
     local keys = {
         [Enum.KeyCode.LeftShift] = "LS",
@@ -451,6 +479,10 @@
         end 
 
         function library:apply_theme(instance, theme, property) 
+            if not themes.utility[theme] or not themes.utility[theme][property] then
+                return
+            end
+
             insert(themes.utility[theme][property], instance)
         end
 
@@ -483,24 +515,32 @@
             end 
         end 
 
-        function library:apply_card_transparency(instance, property, offset)
+        function library:apply_transparency(instance, theme, property, offset)
             property = property or "BackgroundTransparency"
             offset = offset or 0
 
-            insert(themes.utility.card_transparency, {
+            if not themes.utility[theme] then
+                return
+            end
+
+            insert(themes.utility[theme], {
                 instance = instance,
                 property = property,
                 offset = offset,
             })
 
-            instance[property] = clamp((themes.preset.card_transparency or 0) + offset, 0, 1)
+            instance[property] = clamp((themes.preset[theme] or 0) + offset, 0, 1)
         end
 
-        function library:update_card_transparency(value)
-            local transparency = clamp(tonumber(value) or themes.preset.card_transparency or 0.08, 0, 0.45)
-            themes.preset.card_transparency = transparency
+        function library:update_transparency(theme, value)
+            if not themes.utility[theme] then
+                return
+            end
 
-            for _, data in themes.utility.card_transparency do
+            local transparency = clamp(tonumber(value) or themes.preset[theme] or 0, 0, 0.65)
+            themes.preset[theme] = transparency
+
+            for _, data in themes.utility[theme] do
                 local object = data.instance
                 local property = data.property or "BackgroundTransparency"
 
@@ -508,6 +548,14 @@
                     library:tween(object, {[property] = clamp(transparency + (data.offset or 0), 0, 1)}, Enum.EasingStyle.Quad, 0.18)
                 end
             end
+        end
+
+        function library:apply_card_transparency(instance, property, offset)
+            library:apply_transparency(instance, "card_transparency", property, offset)
+        end
+
+        function library:update_card_transparency(value)
+            library:update_transparency("card_transparency", value)
         end
 
         function library:apply_theme_preset(name)
@@ -519,12 +567,16 @@
 
             library.current_theme = name
 
-            if preset.accent then
-                library:update_theme("accent", preset.accent)
+            for _, theme in {"accent", "background", "surface", "card", "card_inner", "border"} do
+                if preset[theme] then
+                    library:update_theme(theme, preset[theme])
+                end
             end
 
-            if preset.card_transparency then
-                library:update_card_transparency(preset.card_transparency)
+            for _, theme in {"window_transparency", "panel_transparency", "card_transparency"} do
+                if preset[theme] then
+                    library:update_transparency(theme, preset[theme])
+                end
             end
         end
 
@@ -734,7 +786,7 @@
 
             local ok, result = pcall(callback, ...)
             if not ok then
-                warn("[Mono UI] callback error:", result)
+                warn("[Nuke UI] callback error:", result)
             end
 
             return ok, result
@@ -829,7 +881,7 @@
 
             local cfg = { 
                 suffix = properties.suffix or properties.Suffix or "";
-                name = properties.name or properties.Name or properties.title or properties.Title or properties.window_name or properties.WindowName or "Ui";
+                name = properties.name or properties.Name or properties.title or properties.Title or properties.window_name or properties.WindowName or "Nuke";
                 game_name = properties.gameInfo or properties.game_info or properties.GameInfo or "";
                 size = properties.size or properties.Size or dim2(0, 700, 0, 565);
                 menu_key = properties.menuKey or properties.menu_key or properties.MenuKey or Enum.KeyCode.Insert;
@@ -874,8 +926,10 @@
                     BorderColor3 = rgb(0, 0, 0);
                     BorderSizePixel = 0;
                     BackgroundTransparency = 1;
-                    BackgroundColor3 = rgb(14, 14, 14)
+                    BackgroundColor3 = themes.preset.background
                 }); items[ "main" ].Position = dim2(0, items[ "main" ].AbsolutePosition.X, 0, items[ "main" ].AbsolutePosition.Y)
+                library:apply_theme(items[ "main" ], "background", "BackgroundColor3")
+                library:apply_transparency(items[ "main" ], "window_transparency")
 
                 items[ "main_scale" ] = library:create( "UIScale" , {
                     Parent = items[ "main" ];
@@ -887,11 +941,12 @@
                     CornerRadius = dim(0, 10)
                 });
                 
-                library:create( "UIStroke" , {
-                    Color = rgb(48, 48, 48);
+                items[ "main_stroke" ] = library:create( "UIStroke" , {
+                    Color = themes.preset.border;
                     Parent = items[ "main" ];
+                    Transparency = 0.2;
                     ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-                });
+                }); library:apply_theme(items[ "main_stroke" ], "border", "Color")
                 
                 items[ "side_frame" ] = library:create( "Frame" , {
                     Parent = items[ "main" ];
@@ -900,18 +955,20 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(0, 140, 1, 0);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(14, 14, 14)
+                    BackgroundColor3 = themes.preset.background
                 });
+                library:apply_theme(items[ "side_frame" ], "background", "BackgroundColor3")
                 
-                library:create( "Frame" , {
+                items[ "side_line" ] = library:create( "Frame" , {
                     AnchorPoint = vec2(1, 0);
                     Parent = items[ "side_frame" ];
                     Position = dim2(1, 0, 0, 0);
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(0, 1, 1, 0);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(21, 21, 21)
-                });
+                    BackgroundColor3 = themes.preset.border;
+                    BackgroundTransparency = 0.35;
+                }); library:apply_theme(items[ "side_line" ], "border", "BackgroundColor3")
                 
                 items[ "button_holder" ] = library:create( "Frame" , {
                     Parent = items[ "side_frame" ];
@@ -943,6 +1000,7 @@
                 items[ "title_accent" ] = library:create( "Frame" , {
                     Parent = items[ "side_frame" ];
                     Name = "\0";
+                    Visible = false;
                     Position = dim2(0, 12, 0, 19);
                     Size = dim2(0, 3, 0, 24);
                     BorderSizePixel = 0;
@@ -979,25 +1037,28 @@
                     Position = dim2(0, 10, 0, 62);
                     Size = dim2(1, -20, 0, 34);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(18, 18, 20);
+                    BackgroundColor3 = themes.preset.surface;
                     BackgroundTransparency = themes.preset.panel_transparency;
                 });
+                library:apply_theme(items[ "search_holder" ], "surface", "BackgroundColor3")
+                library:apply_transparency(items[ "search_holder" ], "panel_transparency")
 
                 library:create( "UICorner" , {
                     Parent = items[ "search_holder" ];
                     CornerRadius = dim(0, 8)
                 });
 
-                library:create( "UIStroke" , {
+                items[ "search_stroke" ] = library:create( "UIStroke" , {
                     Parent = items[ "search_holder" ];
                     ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
-                    Color = rgb(44, 44, 50);
+                    Color = themes.preset.border;
                     Transparency = 0.25;
-                });
+                }); library:apply_theme(items[ "search_stroke" ], "border", "Color")
 
                 items[ "search_accent" ] = library:create( "Frame" , {
                     Parent = items[ "search_holder" ];
                     Name = "\0";
+                    Visible = false;
                     AnchorPoint = vec2(0, 0.5);
                     Position = dim2(0, 9, 0.5, 0);
                     Size = dim2(0, 2, 0, 14);
@@ -1015,7 +1076,7 @@
                     Parent = items[ "search_holder" ];
                     Name = "\0";
                     Position = dim2(0, 18, 0, 0);
-                    Size = dim2(1, -26, 1, 0);
+                    Size = dim2(1, -18, 1, 0);
                     BackgroundTransparency = 1;
                     BorderSizePixel = 0;
                     ClearTextOnFocus = false;
@@ -1045,20 +1106,23 @@
                     Position = dim2(0, 10, 1, -12);
                     Size = dim2(1, -20, 0, 54);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(18, 18, 18);
+                    BackgroundColor3 = themes.preset.surface;
                     BackgroundTransparency = themes.preset.panel_transparency;
                 });
+                library:apply_theme(items[ "profile" ], "surface", "BackgroundColor3")
+                library:apply_transparency(items[ "profile" ], "panel_transparency")
 
                 library:create( "UICorner" , {
                     Parent = items[ "profile" ];
                     CornerRadius = dim(0, 8)
                 });
 
-                library:create( "UIStroke" , {
+                items[ "profile_stroke" ] = library:create( "UIStroke" , {
                     Parent = items[ "profile" ];
                     ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
-                    Color = rgb(36, 36, 36)
-                });
+                    Color = themes.preset.border;
+                    Transparency = 0.28;
+                }); library:apply_theme(items[ "profile_stroke" ], "border", "Color")
 
                 items[ "profile_avatar" ] = library:create( "ImageLabel" , {
                     Parent = items[ "profile" ];
@@ -1117,15 +1181,16 @@
                     BackgroundColor3 = rgb(255, 255, 255)
                 }); cfg.multi_holder = items[ "multi_holder" ];
                 
-                library:create( "Frame" , {
+                items[ "multi_line" ] = library:create( "Frame" , {
                     AnchorPoint = vec2(0, 1);
                     Parent = items[ "multi_holder" ];
                     Position = dim2(0, 0, 1, 0);
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, 0, 0, 1);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(21, 21, 21)
-                });
+                    BackgroundColor3 = themes.preset.border;
+                    BackgroundTransparency = 0.35;
+                }); library:apply_theme(items[ "multi_line" ], "border", "BackgroundColor3")
                 
                 items[ "shadow" ] = library:create( "ImageLabel" , {
                     ImageColor3 = rgb(0, 0, 0);
@@ -1133,6 +1198,7 @@
                     Parent = items[ "main" ];
                     BorderColor3 = rgb(0, 0, 0);
                     Name = "\0";
+                    Visible = false;
                     BackgroundColor3 = rgb(255, 255, 255);
                     Size = dim2(1, 75, 1, 75);
                     AnchorPoint = vec2(0.5, 0.5);
@@ -1153,9 +1219,9 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, -140, 1, -56);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(14, 14, 14);
+                    BackgroundColor3 = themes.preset.background;
                     ZIndex = 2;
-                });                
+                }); library:apply_theme(items[ "global_fade" ], "background", "BackgroundColor3")                
 
                 library:create( "UICorner" , {
                     Parent = items[ "shadow" ];
@@ -1171,8 +1237,10 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, 0, 0, 0);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(23, 23, 23)
-                });
+                    BackgroundColor3 = themes.preset.surface;
+                    BackgroundTransparency = themes.preset.panel_transparency;
+                }); library:apply_theme(items[ "info" ], "surface", "BackgroundColor3")
+                    library:apply_transparency(items[ "info" ], "panel_transparency")
                 
                 library:create( "UICorner" , {
                     Parent = items[ "info" ];
@@ -1185,8 +1253,10 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, 0, 0, 6);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(23, 23, 23)
-                });
+                    BackgroundColor3 = themes.preset.surface;
+                    BackgroundTransparency = themes.preset.panel_transparency;
+                }); library:apply_theme(items[ "grey_fill" ], "surface", "BackgroundColor3")
+                    library:apply_transparency(items[ "grey_fill" ], "panel_transparency")
                 
                 items[ "game" ] = library:create( "TextLabel" , {
                     FontFace = fonts.font;
@@ -1370,8 +1440,8 @@
                         Size = dim2(1, 0, 0, 38);
                         BorderSizePixel = 0;
                         TextSize = 15;
-                        BackgroundColor3 = rgb(22, 22, 22)
-                    });
+                        BackgroundColor3 = themes.preset.surface
+                    }); library:apply_theme(items[ "button" ], "surface", "BackgroundColor3")
                     
                     items[ "icon" ] = library:create( "ImageLabel" , {
                         ImageColor3 = rgb(72, 72, 73);
@@ -1484,8 +1554,8 @@
                                     BorderSizePixel = 0;
                                     AutomaticSize = Enum.AutomaticSize.X;
                                     TextSize = 14;
-                                    BackgroundColor3 = rgb(22, 22, 22)
-                                });
+                                    BackgroundColor3 = themes.preset.surface
+                                }); library:apply_theme(multi_items[ "button" ], "surface", "BackgroundColor3")
                                 
                                 multi_items[ "name" ] = library:create( "TextLabel" , {
                                     FontFace = fonts.font;
@@ -1538,7 +1608,7 @@
                                     CornerRadius = dim(0, 7)
                                 }); 
 
-                                multi_items[ "tab" ] = library:create( "Frame" , {
+                                multi_items[ "tab" ] = library:create( "ScrollingFrame" , {
                                     Parent = library.cache;
                                     BackgroundTransparency = 1;
                                     Name = "\0";
@@ -1547,8 +1617,13 @@
                                     BorderSizePixel = 0;
                                     Visible = false;
                                     ClipsDescendants = true;
+                                    Active = true;
+                                    AutomaticCanvasSize = Enum.AutomaticSize.Y;
+                                    CanvasSize = dim2(0, 0, 0, 0);
+                                    ScrollBarThickness = 3;
+                                    ScrollBarImageColor3 = themes.preset.accent;
                                     BackgroundColor3 = rgb(255, 255, 255)
-                                });
+                                }); library:apply_theme(multi_items[ "tab" ], "accent", "ScrollBarImageColor3")
                                 
                                 library:create( "UIListLayout" , {
                                     FillDirection = Enum.FillDirection.Vertical;
@@ -1556,7 +1631,6 @@
                                     Parent = multi_items[ "tab" ];
                                     Padding = dim(0, 7);
                                     SortOrder = Enum.SortOrder.LayoutOrder;
-                                    VerticalFlex = Enum.UIFlexAlignment.Fill
                                 });
                                 
                                 library:create( "UIPadding" , {
@@ -1722,7 +1796,8 @@
                         BackgroundTransparency = 1;
                         Name = "\0";
                         BorderColor3 = rgb(0, 0, 0);
-                        Size = dim2(0, 0, cfg.size, 0);
+                        Size = dim2(0, 0, 0, 0);
+                        AutomaticSize = Enum.AutomaticSize.Y;
                         BorderSizePixel = 0;
                         BackgroundColor3 = rgb(255, 255, 255)
                     });
@@ -1752,8 +1827,9 @@
                         Parent = self.items[ "tab" ];
                         BackgroundTransparency = 1;
                         Name = "\0";
-                        Size = dim2(0,0,cfg.size,0);
-                        ClipsDescendants = true;
+                        Size = dim2(1, 0, 0, 0);
+                        AutomaticSize = Enum.AutomaticSize.Y;
+                        ClipsDescendants = false;
                         BorderColor3 = rgb(0, 0, 0);
                         BorderSizePixel = 0;
                         Visible = true;
@@ -1763,7 +1839,7 @@
                     library:create( "UIListLayout" , {
                         FillDirection = Enum.FillDirection.Horizontal;
                         HorizontalFlex = Enum.UIFlexAlignment.Fill;
-                        VerticalFlex = Enum.UIFlexAlignment.Fill;
+                        VerticalAlignment = Enum.VerticalAlignment.Top;
                         Parent = items[ "tab_parent" ];
                         Padding = dim(0, 7);
                         SortOrder = Enum.SortOrder.LayoutOrder;
@@ -1789,12 +1865,13 @@
                     Name = "\0";
                     Parent = self.items[ "column" ];
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(0, 0, cfg.size, -3);
+                    Size = dim2(0, 0, 0, 42);
+                    AutomaticSize = Enum.AutomaticSize.Y;
                     ClipsDescendants = true;
                     BorderSizePixel = 0;
                     BackgroundTransparency = themes.preset.card_transparency;
-                    BackgroundColor3 = rgb(19, 19, 22)
-                });
+                    BackgroundColor3 = themes.preset.card
+                }); library:apply_theme(items[ "outline" ], "card", "BackgroundColor3")
 
                 library:create( "UICorner" , {
                     Parent = items[ "outline" ];
@@ -1804,9 +1881,9 @@
                 items[ "outline_stroke" ] = library:create( "UIStroke" , {
                     Parent = items[ "outline" ];
                     ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
-                    Color = rgb(56, 56, 64);
+                    Color = themes.preset.border;
                     Transparency = 0.32;
-                });
+                }); library:apply_theme(items[ "outline_stroke" ], "border", "Color")
 
                 library:apply_card_transparency(items[ "outline" ], "BackgroundTransparency", 0)
                 
@@ -1815,12 +1892,13 @@
                     Name = "\0";
                     Position = dim2(0, 1, 0, 1);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, -2, 1, -2);
+                    Size = dim2(1, -2, 0, 40);
+                    AutomaticSize = Enum.AutomaticSize.Y;
                     ClipsDescendants = true;
                     BorderSizePixel = 0;
                     BackgroundTransparency = clamp(themes.preset.card_transparency + 0.04, 0, 1);
-                    BackgroundColor3 = rgb(16, 16, 18)
-                });
+                    BackgroundColor3 = themes.preset.card_inner
+                }); library:apply_theme(items[ "inline" ], "card_inner", "BackgroundColor3")
                 
                 library:create( "UICorner" , {
                     Parent = items[ "inline" ];
@@ -1829,20 +1907,16 @@
 
                 library:apply_card_transparency(items[ "inline" ], "BackgroundTransparency", 0.04)
                 
-                items[ "scrolling" ] = library:create( "ScrollingFrame" , {
-                    ScrollBarImageColor3 = rgb(44, 44, 44);
-                    Active = true;
-                    AutomaticCanvasSize = Enum.AutomaticSize.Y;
-                    ScrollBarThickness = 2;
+                items[ "scrolling" ] = library:create( "Frame" , {
                     Parent = items[ "inline" ];
                     Name = "\0";
-                    Size = dim2(1, 0, 1, -40);
+                    Size = dim2(1, 0, 0, 0);
+                    AutomaticSize = Enum.AutomaticSize.Y;
                     BackgroundTransparency = 1;
                     Position = dim2(0, 0, 0, 35);
                     BackgroundColor3 = rgb(255, 255, 255);
                     BorderColor3 = rgb(0, 0, 0);
                     BorderSizePixel = 0;
-                    CanvasSize = dim2(0, 0, 0, 0)
                 });
                 
                 items[ "elements" ] = library:create( "Frame" , {
@@ -1857,7 +1931,7 @@
                     BackgroundColor3 = rgb(255, 255, 255)
                 });
                 
-                library:create( "UIListLayout" , {
+                items[ "elements_layout" ] = library:create( "UIListLayout" , {
                     Parent = items[ "elements" ];
                     Padding = dim(0, 10);
                     SortOrder = Enum.SortOrder.LayoutOrder
@@ -1881,8 +1955,8 @@
                     BorderSizePixel = 0;
                     TextSize = 16;
                     BackgroundTransparency = clamp(themes.preset.card_transparency + 0.06, 0, 1);
-                    BackgroundColor3 = rgb(19, 19, 22)
-                });
+                    BackgroundColor3 = themes.preset.card
+                }); library:apply_theme(items[ "button" ], "card", "BackgroundColor3")
 
                 library:apply_card_transparency(items[ "button" ], "BackgroundTransparency", 0.06)
                 
@@ -2018,6 +2092,31 @@
                     });
                 end 
             end;
+
+            local function update_section_size()
+                local content_height = 0
+
+                if items[ "elements_layout" ] then
+                    content_height = items[ "elements_layout" ].AbsoluteContentSize.Y
+                end
+
+                local body_height = max(32, content_height + 35)
+                local total_height = body_height + 38
+
+                items[ "scrolling" ].Size = dim2(1, 0, 0, body_height)
+                items[ "inline" ].Size = dim2(1, -2, 0, total_height)
+                items[ "outline" ].Size = dim2(0, 0, 0, total_height + 2)
+
+                if cfg.search_size then
+                    cfg.search_size = items[ "outline" ].Size
+                end
+            end
+
+            if items[ "elements_layout" ] then
+                library:connection(items[ "elements_layout" ]:GetPropertyChangedSignal("AbsoluteContentSize"), update_section_size)
+            end
+
+            task.defer(update_section_size)
 
             if cfg.fading_toggle then
                 items[ "button" ].MouseButton1Click:Connect(function()
@@ -4261,12 +4360,13 @@
         function library:init_config(window) 
             local main = window:tab({name = "Configs", tabs = {"Main"}})
             
-            local column = main:column({})
-            local section = column:section({name = "Configs", size = 1, default = true, icon = "rbxassetid://139628202576511"})
-            config_holder = section:list({options = {"Report", "This", "Error", "To", "Finobe"}, callback = function(option) end, flag = "config_name_list"}); library:update_config_list()
+            local config_column = main:column({})
+            local config_section = config_column:section({name = "Configs", size = 1, default = true, icon = "rbxassetid://139628202576511"})
+            config_holder = config_section:list({options = {"Report", "This", "Error", "To", "Finobe"}, callback = function(option) end, flag = "config_name_list"}); library:update_config_list()
             
-            local column = main:column({})
-            local section = column:section({name = "Settings", side = "right", size = 1, default = true, icon = "rbxassetid://129380150574313"})
+            local settings_column = main:column({})
+            local theme_section = settings_column:section({name = "Theme", side = "right", size = 0.65, default = true, icon = "rbxassetid://129380150574313"})
+            local menu_section = settings_column:section({name = "Menu", side = "right", size = 0.35, default = true, icon = "rbxassetid://6031280882"})
 
             local function selected_config_name()
                 local text_name = flags["config_name_text"]
@@ -4286,8 +4386,8 @@
                 return library.directory .. "/configs/" .. name .. ".cfg"
             end
 
-            section:textbox({name = "Config name:", flag = "config_name_text"})
-            section:button({name = "Save", callback = function()
+            config_section:textbox({name = "Config name", flag = "config_name_text"})
+            config_section:button({name = "Save Config", callback = function()
                 local name = selected_config_name()
                 if not name then
                     notifications:create_notification({name = "Configs", info = "Enter or select a config name."})
@@ -4298,7 +4398,7 @@
                 library:update_config_list()
                 notifications:create_notification({name = "Configs", info = "Saved config:\n" .. name})
             end}) 
-            section:button({name = "Load", callback = function()
+            config_section:button({name = "Load Config", callback = function()
                 local name = selected_config_name()
                 if not name or not isfile(config_path(name)) then
                     notifications:create_notification({name = "Configs", info = "Config not found."})
@@ -4309,7 +4409,7 @@
                 library:update_config_list()
                 notifications:create_notification({name = "Configs", info = "Loaded config:\n" .. name})
             end})
-            section:button({name = "Delete", callback = function()
+            config_section:button({name = "Delete Config", callback = function()
                 local name = selected_config_name()
                 if not name or not isfile(config_path(name)) then
                     notifications:create_notification({name = "Configs", info = "Config not found."})
@@ -4320,14 +4420,31 @@
                 library:update_config_list()
                 notifications:create_notification({name = "Configs", info = "Deleted config:\n" .. name})
             end})
-            section:dropdown({name = "Theme Preset", info = "Applies a built-in Mono color preset.", flag = "theme_preset", options = {"Mono", "Graphite", "Mint", "Rose", "Amber"}, default = library.current_theme or "Mono", callback = function(theme_name)
+            config_section:button({name = "Refresh List", callback = function()
+                library:update_config_list()
+                notifications:create_notification({name = "Configs", info = "Config list refreshed."})
+            end})
+
+            theme_section:dropdown({name = "Theme Preset", info = "Applies a built-in Nuke theme preset.", flag = "theme_preset", options = themes.names, default = library.current_theme or "Nuke", callback = function(theme_name)
                 library:apply_theme_preset(theme_name)
             end})
-            section:slider({name = "Card Transparency", info = "Controls only section/card transparency.", flag = "card_transparency", min = 0, max = 0.35, interval = 0.01, default = themes.preset.card_transparency, callback = function(value)
-                library:update_card_transparency(value)
+            theme_section:colorpicker({name = "Accent Color", info = "Changes the menu accent color.", flag = "theme_accent_color", callback = function(color, alpha) library:update_theme("accent", color) end, color = themes.preset.accent})
+            theme_section:colorpicker({name = "Background Color", info = "Changes the main window background.", flag = "theme_background_color", callback = function(color, alpha) library:update_theme("background", color) end, color = themes.preset.background})
+            theme_section:colorpicker({name = "Surface Color", info = "Changes side panels and search/profile surfaces.", flag = "theme_surface_color", callback = function(color, alpha) library:update_theme("surface", color) end, color = themes.preset.surface})
+            theme_section:colorpicker({name = "Card Color", info = "Changes section/card color.", flag = "theme_card_color", callback = function(color, alpha) library:update_theme("card", color) end, color = themes.preset.card})
+            theme_section:colorpicker({name = "Card Inner Color", info = "Changes section inner/body color.", flag = "theme_card_inner_color", callback = function(color, alpha) library:update_theme("card_inner", color) end, color = themes.preset.card_inner})
+            theme_section:colorpicker({name = "Border Color", info = "Changes outlines and divider colors.", flag = "theme_border_color", callback = function(color, alpha) library:update_theme("border", color) end, color = themes.preset.border})
+            theme_section:slider({name = "Window Transparency", info = "Controls full window transparency.", flag = "window_transparency", min = 0, max = 0.55, interval = 0.01, default = themes.preset.window_transparency, callback = function(value)
+                library:update_transparency("window_transparency", value)
             end})
-            section:colorpicker({name = "Accent Color", info = "Changes the menu accent color.", callback = function(color, alpha) library:update_theme("accent", color) end, color = themes.preset.accent})
-            section:keybind({name = "Menu Bind", info = "Sets the key used to show or hide the menu.", flag = "menu_bind", key = window.menu_key or Enum.KeyCode.Insert, mode = "Toggle", callback = function()
+            theme_section:slider({name = "Panel Transparency", info = "Controls search/profile/info panel transparency.", flag = "panel_transparency", min = 0, max = 0.55, interval = 0.01, default = themes.preset.panel_transparency, callback = function(value)
+                library:update_transparency("panel_transparency", value)
+            end})
+            theme_section:slider({name = "Card Transparency", info = "Controls section/card transparency.", flag = "card_transparency", min = 0, max = 0.55, interval = 0.01, default = themes.preset.card_transparency, callback = function(value)
+                library:update_transparency("card_transparency", value)
+            end})
+
+            menu_section:keybind({name = "Menu Bind", info = "Sets the key used to show or hide the menu.", flag = "menu_bind", key = window.menu_key or Enum.KeyCode.Insert, mode = "Toggle", callback = function()
                 local bind = flags["menu_bind"]
                 if window.set_menu_key and type(bind) == "table" then
                     window.set_menu_key(bind.key)
@@ -5400,6 +5517,7 @@ library.List = library.list
 library.InitConfig = library.init_config
 library.ApplyThemePreset = library.apply_theme_preset
 library.UpdateTheme = library.update_theme
+library.UpdateTransparency = library.update_transparency
 library.UpdateCardTransparency = library.update_card_transparency
 library.SetSearch = library.set_search
 library.EspPreview = library.esp_preview
