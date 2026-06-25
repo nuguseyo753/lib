@@ -984,6 +984,9 @@
 
                 tween;
             }
+
+            library.current_window = cfg
+            library.CurrentWindow = cfg
             
             library[ "items" ] = library:create( "ScreenGui" , {
                 Parent = coregui;
@@ -1415,8 +1418,77 @@
                 library:resizify(items[ "main" ])
             end 
 
+            local function normalize_menu_key(key)
+                if type(key) == "table" then
+                    key = key.Key or key.key or key.Value or key.value or key[1]
+                end
+
+                if type(key) == "string" then
+                    local upper_key = key:upper()
+                    if upper_key == "NONE" or upper_key == "ESCAPE" then
+                        return
+                    elseif upper_key == "MB1" then
+                        return Enum.UserInputType.MouseButton1
+                    elseif upper_key == "MB2" then
+                        return Enum.UserInputType.MouseButton2
+                    elseif upper_key == "MB3" then
+                        return Enum.UserInputType.MouseButton3
+                    end
+
+                    key = library:convert_enum(key) or key
+                end
+
+                if key == "NONE" or key == Enum.KeyCode.Escape then
+                    return
+                end
+
+                return key
+            end
+
+            local function current_menu_key()
+                local env = (getgenv and getgenv()) or _G
+                local key
+
+                key = normalize_menu_key(flags["MenuKeybind"])
+                if key then
+                    cfg.menu_key = key
+                    return key
+                end
+
+                key = normalize_menu_key(library.ToggleKeybind)
+                if key then
+                    cfg.menu_key = key
+                    return key
+                end
+
+                if env and type(env.Options) == "table" then
+                    key = normalize_menu_key(env.Options.MenuKeybind or env.Options.menu_bind)
+                    if key then
+                        cfg.menu_key = key
+                        return key
+                    end
+                end
+
+                key = normalize_menu_key(flags["menu_bind"])
+                if key then
+                    cfg.menu_key = key
+                    return key
+                end
+
+                key = normalize_menu_key(cfg.menu_key)
+                if key then
+                    cfg.menu_key = key
+                end
+
+                return key
+            end
+
             local function menu_key_matches(input)
-                local key = cfg.menu_key
+                local key = current_menu_key()
+
+                if not key then
+                    return false
+                end
 
                 if typeof(key) == "EnumItem" then
                     return input.KeyCode == key or input.UserInputType == key
@@ -1427,15 +1499,9 @@
             end
 
             function cfg.set_menu_key(key)
-                if type(key) == "table" then
-                    key = key.key or key.Key or key.value or key.Value
-                end
+                key = normalize_menu_key(key)
 
-                if type(key) == "string" and key ~= "NONE" then
-                    key = library:convert_enum(key) or key
-                end
-
-                if key and key ~= "NONE" then
+                if key then
                     cfg.menu_key = key
                 end
             end
@@ -4136,8 +4202,13 @@
                     active = cfg.active
                 }
 
-                if cfg.target and cfg.target.set_menu_key then
-                    cfg.target.set_menu_key(cfg.key)
+                local menu_target = cfg.target
+                if not menu_target and cfg.flag == "menu_bind" then
+                    menu_target = library.current_window
+                end
+
+                if menu_target and menu_target.set_menu_key then
+                    menu_target.set_menu_key(cfg.key)
                 end
 
                 library:safe_callback(cfg.callback, cfg.active)
