@@ -488,7 +488,7 @@
         end
 
         function library:update_theme(theme, color)
-            if not themes.utility[theme] then
+            if not themes.utility[theme] or typeof(color) ~= "Color3" then
                 return
             end
 
@@ -506,11 +506,7 @@
             for property, objects in themes.utility[theme] do 
                 for _, object in objects do 
                     if object and object.Parent and is_theme_color(object[property]) then
-                        if object:IsA("UIStroke") then
-                            object[property] = color
-                        else
-                            library:tween(object, {[property] = color}, Enum.EasingStyle.Quad, 0.18)
-                        end
+                        object[property] = color
                     end
                 end 
             end 
@@ -3532,7 +3528,7 @@
                     h, s, v = color:ToHSV()
                 end
                 
-                if alpha then 
+                if alpha ~= nil then 
                     a = alpha
                 end 
                 
@@ -3602,14 +3598,17 @@
 
             items[ "alpha_gradient" ].MouseButton1Down:Connect(function()
                 dragging_alpha = true 
+                cfg.update_color()
             end)
             
             items[ "hue_gradient" ].MouseButton1Down:Connect(function()
                 dragging_hue = true 
+                cfg.update_color()
             end)
             
             items[ "sat" ].MouseButton1Down:Connect(function()
                 dragging_sat = true  
+                cfg.update_color()
             end)
 
             items[ "input" ].FocusLost:Connect(function()
@@ -4399,10 +4398,10 @@
         end 
 
         function library:init_config(window) 
-            local menu_page, config_page = window:tab({name = "UI Settings", tabs = {"Menu", "Configuration"}, group = "Settings"})
+            local menu_page, config_page = window:tab({name = "UI Settings", tabs = {"Window", "Configuration"}, group = "Settings"})
             
             local menu_column = menu_page:column({})
-            local menu_section = menu_column:section({name = "Menu", size = 0.35, default = true, icon = "rbxassetid://6031280882"})
+            local menu_section = menu_column:section({name = "Window", size = 0.35, default = true, icon = "rbxassetid://6031280882"})
             local theme_section = menu_column:section({name = "Themes", size = 0.65, default = true, icon = "rbxassetid://129380150574313"})
 
             local config_column = config_page:column({})
@@ -4498,10 +4497,10 @@
                 end
             end
 
-            menu_section:button({name = "Unload", callback = function()
+            menu_section:button({name = "Unload UI", callback = function()
                 library:unload_menu()
             end})
-            menu_section:keybind({name = "Menu Bind", info = "Sets the key used to show or hide the menu.", flag = "menu_bind", key = window.menu_key or Enum.KeyCode.Insert, mode = "Toggle", callback = function()
+            menu_section:keybind({name = "Toggle Bind", info = "Sets the key used to show or hide the UI.", flag = "menu_bind", key = window.menu_key or Enum.KeyCode.Insert, mode = "Toggle", callback = function()
                 local bind = flags["menu_bind"]
                 if window.set_menu_key and type(bind) == "table" then
                     window.set_menu_key(bind.key)
