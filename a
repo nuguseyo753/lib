@@ -555,12 +555,20 @@
             library:update_transparency("card_transparency", value)
         end
 
+        function library:get_theme_preset(name)
+            if name == "Nuke" then
+                name = "Red"
+            end
+
+            return themes.presets[name]
+        end
+
         function library:apply_theme_preset(name)
             if name == "Nuke" then
                 name = "Red"
             end
 
-            local preset = themes.presets[name]
+            local preset = library:get_theme_preset(name)
 
             if not preset then
                 return
@@ -568,15 +576,40 @@
 
             library.current_theme = name
 
+            local color_flags = {
+                accent = "theme_accent_color",
+                background = "theme_background_color",
+                surface = "theme_surface_color",
+                card = "theme_card_color",
+                card_inner = "theme_card_inner_color",
+                border = "theme_border_color",
+            }
+
             for _, theme in {"accent", "background", "surface", "card", "card_inner", "border"} do
                 if preset[theme] then
-                    library:update_theme(theme, preset[theme])
+                    local setter = config_flags[color_flags[theme]]
+                    if setter then
+                        setter(preset[theme])
+                    else
+                        library:update_theme(theme, preset[theme])
+                    end
                 end
             end
 
+            local transparency_flags = {
+                window_transparency = "window_transparency",
+                panel_transparency = "panel_transparency",
+                card_transparency = "card_transparency",
+            }
+
             for _, theme in {"window_transparency", "panel_transparency", "card_transparency"} do
                 if preset[theme] then
-                    library:update_transparency(theme, preset[theme])
+                    local setter = config_flags[transparency_flags[theme]]
+                    if setter then
+                        setter(preset[theme])
+                    else
+                        library:update_transparency(theme, preset[theme])
+                    end
                 end
             end
         end
@@ -610,13 +643,32 @@
 
             for _, theme in {"accent", "background", "surface", "card", "card_inner", "border"} do
                 if type(config[theme]) == "string" then
-                    library:update_theme(theme, hex(config[theme]:gsub("#", "")))
+                    local color = hex(config[theme]:gsub("#", ""))
+                    local setter = config_flags[({
+                        accent = "theme_accent_color",
+                        background = "theme_background_color",
+                        surface = "theme_surface_color",
+                        card = "theme_card_color",
+                        card_inner = "theme_card_inner_color",
+                        border = "theme_border_color",
+                    })[theme]]
+
+                    if setter then
+                        setter(color)
+                    else
+                        library:update_theme(theme, color)
+                    end
                 end
             end
 
             for _, theme in {"window_transparency", "panel_transparency", "card_transparency"} do
                 if config[theme] ~= nil then
-                    library:update_transparency(theme, config[theme])
+                    local setter = config_flags[theme]
+                    if setter then
+                        setter(config[theme])
+                    else
+                        library:update_transparency(theme, config[theme])
+                    end
                 end
             end
         end
@@ -1377,6 +1429,10 @@
             function cfg.set_menu_key(key)
                 if type(key) == "table" then
                     key = key.key or key.Key or key.value or key.Value
+                end
+
+                if type(key) == "string" and key ~= "NONE" then
+                    key = library:convert_enum(key) or key
                 end
 
                 if key and key ~= "NONE" then
@@ -3813,6 +3869,7 @@
                 name = library:option(options, {"name", "Name"}, nil), 
                 info = library:option(options, {"info", "Info", "description", "Description"}, nil),
                 ignore_key = library:option(options, {"ignore", "Ignore"}, false), 
+                target = library:option(options, {"target", "Target", "window", "Window", "menu_window", "MenuWindow"}, nil),
 
                 key = key, 
                 mode = library:option(options, {"mode", "Mode"}, "Toggle"),
@@ -4078,6 +4135,10 @@
                     key = cfg.key, 
                     active = cfg.active
                 }
+
+                if cfg.target and cfg.target.set_menu_key then
+                    cfg.target.set_menu_key(cfg.key)
+                end
 
                 library:safe_callback(cfg.callback, cfg.active)
             end
@@ -4525,7 +4586,7 @@
             menu_section:button({name = "Unload", callback = function()
                 library:unload_menu()
             end})
-            menu_section:keybind({name = "Menu bind", info = "Sets the key used to show or hide the UI.", flag = "menu_bind", key = window.menu_key or Enum.KeyCode.Insert, mode = "Toggle", callback = function()
+            menu_section:keybind({name = "Menu bind", info = "Sets the key used to show or hide the UI.", flag = "menu_bind", key = window.menu_key or Enum.KeyCode.Insert, mode = "Toggle", target = window, callback = function()
                 local bind = flags["menu_bind"]
                 if window.set_menu_key and type(bind) == "table" then
                     window.set_menu_key(bind.key)
@@ -5709,6 +5770,7 @@ library.Settings = library.settings
 library.List = library.list
 library.InitConfig = library.init_config
 library.ApplyThemePreset = library.apply_theme_preset
+library.GetThemePreset = library.get_theme_preset
 library.UpdateTheme = library.update_theme
 library.UpdateTransparency = library.update_transparency
 library.UpdateCardTransparency = library.update_card_transparency
