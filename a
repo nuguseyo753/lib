@@ -61,6 +61,7 @@
         folders = {
             "/fonts",
             "/configs",
+            "/themes",
         },
         flags = {},
         config_flags = {},
@@ -75,19 +76,19 @@
         names = {"Nuke", "Graphite", "Arctic", "Ember", "Mint", "Rose"},
 
         preset = {
-            accent = rgb(125, 255, 120),
-            background = rgb(9, 11, 10),
-            surface = rgb(16, 19, 17),
-            card = rgb(19, 23, 20),
-            card_inner = rgb(14, 17, 15),
-            border = rgb(48, 62, 52),
+            accent = rgb(255, 70, 70),
+            background = rgb(12, 10, 10),
+            surface = rgb(20, 17, 17),
+            card = rgb(24, 19, 19),
+            card_inner = rgb(17, 14, 14),
+            border = rgb(72, 48, 48),
             window_transparency = 0.24,
             panel_transparency = 0.28,
             card_transparency = 0.22,
         }, 
 
         presets = {
-            Nuke = {accent = rgb(125, 255, 120), background = rgb(9, 11, 10), surface = rgb(16, 19, 17), card = rgb(19, 23, 20), card_inner = rgb(14, 17, 15), border = rgb(48, 62, 52), window_transparency = 0.24, panel_transparency = 0.28, card_transparency = 0.22},
+            Nuke = {accent = rgb(255, 70, 70), background = rgb(12, 10, 10), surface = rgb(20, 17, 17), card = rgb(24, 19, 19), card_inner = rgb(17, 14, 14), border = rgb(72, 48, 48), window_transparency = 0.24, panel_transparency = 0.28, card_transparency = 0.22},
             Graphite = {accent = rgb(125, 146, 255), background = rgb(10, 11, 14), surface = rgb(17, 18, 23), card = rgb(21, 22, 29), card_inner = rgb(16, 17, 22), border = rgb(52, 55, 70), window_transparency = 0.24, panel_transparency = 0.28, card_transparency = 0.24},
             Arctic = {accent = rgb(105, 205, 255), background = rgb(8, 12, 15), surface = rgb(14, 21, 26), card = rgb(18, 27, 33), card_inner = rgb(13, 19, 24), border = rgb(46, 69, 80), window_transparency = 0.25, panel_transparency = 0.3, card_transparency = 0.25},
             Ember = {accent = rgb(255, 150, 85), background = rgb(15, 10, 8), surface = rgb(24, 17, 14), card = rgb(30, 20, 16), card_inner = rgb(21, 15, 13), border = rgb(78, 52, 41), window_transparency = 0.23, panel_transparency = 0.28, card_transparency = 0.23},
@@ -576,6 +577,46 @@
             for _, theme in {"window_transparency", "panel_transparency", "card_transparency"} do
                 if preset[theme] then
                     library:update_transparency(theme, preset[theme])
+                end
+            end
+        end
+
+        function library:get_theme_config()
+            local config = {}
+
+            for _, theme in {"accent", "background", "surface", "card", "card_inner", "border"} do
+                local color = themes.preset[theme]
+                if typeof(color) == "Color3" then
+                    config[theme] = color:ToHex()
+                end
+            end
+
+            for _, theme in {"window_transparency", "panel_transparency", "card_transparency"} do
+                config[theme] = themes.preset[theme]
+            end
+
+            return http_service:JSONEncode(config)
+        end
+
+        function library:load_theme_config(theme_json)
+            local decoded, config = pcall(function()
+                return http_service:JSONDecode(theme_json)
+            end)
+
+            if not decoded or type(config) ~= "table" then
+                notifications:create_notification({name = "Themes", info = "Failed to parse theme."})
+                return
+            end
+
+            for _, theme in {"accent", "background", "surface", "card", "card_inner", "border"} do
+                if type(config[theme]) == "string" then
+                    library:update_theme(theme, hex(config[theme]:gsub("#", "")))
+                end
+            end
+
+            for _, theme in {"window_transparency", "panel_transparency", "card_transparency"} do
+                if config[theme] ~= nil then
+                    library:update_transparency(theme, config[theme])
                 end
             end
         end
@@ -4358,15 +4399,15 @@
         end 
 
         function library:init_config(window) 
-            local main = window:tab({name = "Configs", tabs = {"Main"}})
+            local menu_page, config_page = window:tab({name = "UI Settings", tabs = {"Menu", "Configuration"}, group = "Settings"})
             
-            local config_column = main:column({})
-            local config_section = config_column:section({name = "Configs", size = 1, default = true, icon = "rbxassetid://139628202576511"})
+            local menu_column = menu_page:column({})
+            local menu_section = menu_column:section({name = "Menu", size = 0.35, default = true, icon = "rbxassetid://6031280882"})
+            local theme_section = menu_column:section({name = "Themes", size = 0.65, default = true, icon = "rbxassetid://129380150574313"})
+
+            local config_column = config_page:column({})
+            local config_section = config_column:section({name = "Configuration", size = 1, default = true, icon = "rbxassetid://139628202576511"})
             config_holder = config_section:list({options = {"Report", "This", "Error", "To", "Finobe"}, callback = function(option) end, flag = "config_name_list"}); library:update_config_list()
-            
-            local settings_column = main:column({})
-            local theme_section = settings_column:section({name = "Theme", side = "right", size = 0.65, default = true, icon = "rbxassetid://129380150574313"})
-            local menu_section = settings_column:section({name = "Menu", side = "right", size = 0.35, default = true, icon = "rbxassetid://6031280882"})
 
             local function selected_config_name()
                 local text_name = flags["config_name_text"]
@@ -4385,6 +4426,87 @@
             local function config_path(name)
                 return library.directory .. "/configs/" .. name .. ".cfg"
             end
+
+            local function autoload_path()
+                return library.directory .. "/configs/autoload.txt"
+            end
+
+            local function get_autoload_name()
+                if isfile and isfile(autoload_path()) then
+                    local name = readfile(autoload_path())
+                    if type(name) == "string" then
+                        name = name:gsub("^%s+", ""):gsub("%s+$", "")
+                    end
+
+                    if name and name ~= "" then
+                        return name:gsub("%.cfg$", "")
+                    end
+                end
+            end
+
+            local autoload_label
+            local function update_autoload_label()
+                if autoload_label and autoload_label.SetText then
+                    autoload_label:SetText("Current autoload config: " .. (get_autoload_name() or "none"))
+                end
+            end
+
+            local custom_theme_holder
+            local function custom_theme_path(name)
+                return library.directory .. "/themes/" .. name .. ".json"
+            end
+
+            local function selected_theme_name()
+                local text_name = flags["custom_theme_name"]
+                if type(text_name) == "string" then
+                    text_name = text_name:gsub("^%s+", ""):gsub("%s+$", "")
+                end
+
+                local name = type(text_name) == "string" and text_name ~= "" and text_name or flags["custom_theme_list"]
+                if type(name) ~= "string" or name == "" or name == "None" then
+                    return
+                end
+
+                return name:gsub("%.json$", "")
+            end
+
+            local function refresh_custom_theme_list()
+                local list = {}
+
+                if listfiles then
+                    local ok, files = pcall(listfiles, library.directory .. "/themes")
+                    if ok and type(files) == "table" then
+                        for _, file in files do
+                            local name = tostring(file):gsub("\\", "/"):match("([^/]+)%.json$")
+                            if name then
+                                insert(list, name)
+                            end
+                        end
+                    end
+                end
+
+                table.sort(list, function(a, b)
+                    return a:lower() < b:lower()
+                end)
+
+                return list
+            end
+
+            local function update_custom_theme_list()
+                if custom_theme_holder and custom_theme_holder.refresh_options then
+                    custom_theme_holder.refresh_options(refresh_custom_theme_list())
+                end
+            end
+
+            menu_section:button({name = "Unload", callback = function()
+                library:unload_menu()
+            end})
+            menu_section:keybind({name = "Menu Bind", info = "Sets the key used to show or hide the menu.", flag = "menu_bind", key = window.menu_key or Enum.KeyCode.Insert, mode = "Toggle", callback = function()
+                local bind = flags["menu_bind"]
+                if window.set_menu_key and type(bind) == "table" then
+                    window.set_menu_key(bind.key)
+                end
+            end, default = false})
 
             config_section:textbox({name = "Config name", flag = "config_name_text"})
             config_section:button({name = "Save Config", callback = function()
@@ -4424,6 +4546,29 @@
                 library:update_config_list()
                 notifications:create_notification({name = "Configs", info = "Config list refreshed."})
             end})
+            config_section:button({name = "Set As Autoload", callback = function()
+                local name = selected_config_name()
+                if not name or not isfile(config_path(name)) then
+                    notifications:create_notification({name = "Configs", info = "Save or select a config first."})
+                    return
+                end
+
+                writefile(autoload_path(), name)
+                update_autoload_label()
+                notifications:create_notification({name = "Configs", info = "Autoload config:\n" .. name})
+            end})
+            config_section:button({name = "Load Autoload", callback = function()
+                local name = get_autoload_name()
+                if not name or not isfile(config_path(name)) then
+                    notifications:create_notification({name = "Configs", info = "No autoload config found."})
+                    return
+                end
+
+                library:load_config(readfile(config_path(name)))
+                notifications:create_notification({name = "Configs", info = "Loaded autoload:\n" .. name})
+            end})
+            autoload_label = config_section:label({name = "Current autoload config: none"})
+            update_autoload_label()
 
             theme_section:dropdown({name = "Theme Preset", info = "Applies a built-in Nuke theme preset.", flag = "theme_preset", options = themes.names, default = library.current_theme or "Nuke", callback = function(theme_name)
                 library:apply_theme_preset(theme_name)
@@ -4443,13 +4588,37 @@
             theme_section:slider({name = "Card Transparency", info = "Controls section/card transparency.", flag = "card_transparency", min = 0, max = 0.55, interval = 0.01, default = themes.preset.card_transparency, callback = function(value)
                 library:update_transparency("card_transparency", value)
             end})
-
-            menu_section:keybind({name = "Menu Bind", info = "Sets the key used to show or hide the menu.", flag = "menu_bind", key = window.menu_key or Enum.KeyCode.Insert, mode = "Toggle", callback = function()
-                local bind = flags["menu_bind"]
-                if window.set_menu_key and type(bind) == "table" then
-                    window.set_menu_key(bind.key)
+            theme_section:textbox({name = "Custom Theme Name", flag = "custom_theme_name"})
+            custom_theme_holder = theme_section:dropdown({name = "Custom Themes", flag = "custom_theme_list", options = refresh_custom_theme_list(), default = nil, callback = function(theme_name) end})
+            theme_section:button({name = "Save Theme", callback = function()
+                local name = selected_theme_name()
+                if not name then
+                    notifications:create_notification({name = "Themes", info = "Enter a custom theme name."})
+                    return
                 end
-            end, default = false})
+                if not writefile then
+                    notifications:create_notification({name = "Themes", info = "File saving is not available."})
+                    return
+                end
+
+                writefile(custom_theme_path(name), library:get_theme_config())
+                update_custom_theme_list()
+                notifications:create_notification({name = "Themes", info = "Saved theme:\n" .. name})
+            end})
+            theme_section:button({name = "Load Theme", callback = function()
+                local name = selected_theme_name()
+                if not name or not isfile or not readfile or not isfile(custom_theme_path(name)) then
+                    notifications:create_notification({name = "Themes", info = "Theme not found."})
+                    return
+                end
+
+                library:load_theme_config(readfile(custom_theme_path(name)))
+                notifications:create_notification({name = "Themes", info = "Loaded theme:\n" .. name})
+            end})
+            theme_section:button({name = "Refresh Theme List", callback = function()
+                update_custom_theme_list()
+                notifications:create_notification({name = "Themes", info = "Theme list refreshed."})
+            end})
         end
 
         function notifications:refresh_notifs() 
@@ -5519,6 +5688,8 @@ library.ApplyThemePreset = library.apply_theme_preset
 library.UpdateTheme = library.update_theme
 library.UpdateTransparency = library.update_transparency
 library.UpdateCardTransparency = library.update_card_transparency
+library.GetThemeConfig = library.get_theme_config
+library.LoadThemeConfig = library.load_theme_config
 library.SetSearch = library.set_search
 library.EspPreview = library.esp_preview
 library.ESPPreview = library.esp_preview
