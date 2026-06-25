@@ -73,7 +73,7 @@
     }
 
     local themes = {
-        names = {"Nuke", "Graphite", "Arctic", "Ember", "Mint", "Rose"},
+        names = {"Red", "Graphite", "Arctic", "Ember", "Mint", "Rose"},
 
         preset = {
             accent = rgb(255, 70, 70),
@@ -82,13 +82,13 @@
             card = rgb(24, 19, 19),
             card_inner = rgb(17, 14, 14),
             border = rgb(72, 48, 48),
-            window_transparency = 0.24,
-            panel_transparency = 0.28,
-            card_transparency = 0.22,
+            window_transparency = 0.1,
+            panel_transparency = 0.12,
+            card_transparency = 0.1,
         }, 
 
         presets = {
-            Nuke = {accent = rgb(255, 70, 70), background = rgb(12, 10, 10), surface = rgb(20, 17, 17), card = rgb(24, 19, 19), card_inner = rgb(17, 14, 14), border = rgb(72, 48, 48), window_transparency = 0.24, panel_transparency = 0.28, card_transparency = 0.22},
+            Red = {accent = rgb(255, 70, 70), background = rgb(12, 10, 10), surface = rgb(20, 17, 17), card = rgb(24, 19, 19), card_inner = rgb(17, 14, 14), border = rgb(72, 48, 48), window_transparency = 0.1, panel_transparency = 0.12, card_transparency = 0.1},
             Graphite = {accent = rgb(125, 146, 255), background = rgb(10, 11, 14), surface = rgb(17, 18, 23), card = rgb(21, 22, 29), card_inner = rgb(16, 17, 22), border = rgb(52, 55, 70), window_transparency = 0.24, panel_transparency = 0.28, card_transparency = 0.24},
             Arctic = {accent = rgb(105, 205, 255), background = rgb(8, 12, 15), surface = rgb(14, 21, 26), card = rgb(18, 27, 33), card_inner = rgb(13, 19, 24), border = rgb(46, 69, 80), window_transparency = 0.25, panel_transparency = 0.3, card_transparency = 0.25},
             Ember = {accent = rgb(255, 150, 85), background = rgb(15, 10, 8), surface = rgb(24, 17, 14), card = rgb(30, 20, 16), card_inner = rgb(21, 15, 13), border = rgb(78, 52, 41), window_transparency = 0.23, panel_transparency = 0.28, card_transparency = 0.23},
@@ -126,7 +126,7 @@
         }
     }
 
-    library.current_theme = "Nuke"
+    library.current_theme = "Red"
 
     local keys = {
         [Enum.KeyCode.LeftShift] = "LS",
@@ -556,6 +556,10 @@
         end
 
         function library:apply_theme_preset(name)
+            if name == "Nuke" then
+                name = "Red"
+            end
+
             local preset = themes.presets[name]
 
             if not preset then
@@ -1063,9 +1067,16 @@
                     BorderSizePixel = 0;
                     RichText = false;
                     TextXAlignment = Enum.TextXAlignment.Left;
-                    TextTruncate = Enum.TextTruncate.AtEnd;
+                    TextScaled = true;
+                    TextTruncate = Enum.TextTruncate.None;
                     TextSize = 22;
                     BackgroundColor3 = rgb(255, 255, 255)
+                });
+
+                library:create("UITextSizeConstraint", {
+                    Parent = items[ "title" ];
+                    MaxTextSize = 22;
+                    MinTextSize = 8;
                 });
 
                 items[ "search_holder" ] = library:create( "Frame" , {
@@ -1187,9 +1198,16 @@
                     FontFace = fonts.font;
                     Text = lp.DisplayName ~= "" and lp.DisplayName or lp.Name;
                     TextColor3 = rgb(242, 242, 242);
+                    TextScaled = true;
                     TextSize = 13;
-                    TextTruncate = Enum.TextTruncate.AtEnd;
+                    TextTruncate = Enum.TextTruncate.None;
                     TextXAlignment = Enum.TextXAlignment.Left;
+                });
+
+                library:create("UITextSizeConstraint", {
+                    Parent = items[ "profile_name" ];
+                    MaxTextSize = 13;
+                    MinTextSize = 8;
                 });
 
                 items[ "profile_user" ] = library:create( "TextLabel" , {
@@ -1202,9 +1220,16 @@
                     FontFace = fonts.small;
                     Text = "@" .. lp.Name;
                     TextColor3 = rgb(120, 120, 120);
+                    TextScaled = true;
                     TextSize = 12;
-                    TextTruncate = Enum.TextTruncate.AtEnd;
+                    TextTruncate = Enum.TextTruncate.None;
                     TextXAlignment = Enum.TextXAlignment.Left;
+                });
+
+                library:create("UITextSizeConstraint", {
+                    Parent = items[ "profile_user" ];
+                    MaxTextSize = 12;
+                    MinTextSize = 7;
                 });
                 
                 items[ "multi_holder" ] = library:create( "Frame" , {
@@ -4569,7 +4594,7 @@
             autoload_label = config_section:label({name = "Current autoload config: none"})
             update_autoload_label()
 
-            theme_section:dropdown({name = "Theme Preset", info = "Applies a built-in Nuke theme preset.", flag = "theme_preset", options = themes.names, default = library.current_theme or "Nuke", callback = function(theme_name)
+            theme_section:dropdown({name = "Theme Preset", info = "Applies a built-in theme preset.", flag = "theme_preset", options = themes.names, default = library.current_theme or "Red", callback = function(theme_name)
                 library:apply_theme_preset(theme_name)
             end})
             theme_section:colorpicker({name = "Accent Color", info = "Changes the menu accent color.", flag = "theme_accent_color", callback = function(color, alpha) library:update_theme("accent", color) end, color = themes.preset.accent})
