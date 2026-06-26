@@ -275,6 +275,7 @@ local function createGroup(section)
             name = config.Text or id,
             flag = id,
             default = config.Default == true,
+            type = config.Type or config.type,
             info = config.Tooltip,
             callback = function(value)
                 option.Value = value == true
@@ -1135,7 +1136,7 @@ local LeftGroupBox = Tabs.Main:AddLeftGroupbox("Groupbox")
 
 -- Groupbox:AddToggle
 -- Arguments: Index, Options
--- Options: Text, Default, Tooltip, Callback
+-- Options: Text, Default, Type, Tooltip, Callback
 LeftGroupBox:AddToggle("MyToggle", {
     Text = "This is a toggle",
     Default = true,
