@@ -422,7 +422,7 @@
             end
             
             if #values == 4 then              
-                return unpack(values)
+                return table.unpack(values)
             else 
                 return
             end
@@ -1318,7 +1318,7 @@
 
             if not library.watermark_stats_connection then
                 local frame_count = 0
-                local last_update = tick()
+                local last_update = os.clock()
 
                 local function read_ping()
                     local value
@@ -1339,7 +1339,7 @@
                 library.watermark_stats_connection = library:connection(run.RenderStepped, function()
                     frame_count += 1
 
-                    local now = tick()
+                    local now = os.clock()
                     local elapsed = now - last_update
 
                     if elapsed < 0.5 then
@@ -2554,7 +2554,7 @@
                 cfg.open_tab(true) 
             end
 
-            return unpack(cfg.pages)
+            return table.unpack(cfg.pages)
         end
 
         function library:seperator(properties)
