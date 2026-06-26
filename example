@@ -1,9 +1,17 @@
--- New example script written for Nuke UI
 -- This is a UI showcase script. It does not include game features.
+-- You can use this file as a quick reference for all common controls.
 
 local repo = "https://raw.githubusercontent.com/nuguseyo753/lib/refs/heads/main/"
 
-local Nuke = loadstring(game:HttpGet(repo .. "a"))()
+-- Change this value when you want a different menu title.
+-- Set it to "" if you want the title area hidden.
+local UI_TITLE = "Ui" -- Set this to "" if you want the title hidden.
+
+local function getUiTitle()
+    return UI_TITLE == nil and "" or tostring(UI_TITLE)
+end
+
+local Nuke = loadstring(game:HttpGet(repo .. "ui"))()
 local ActiveWindow
 
 local env = (getgenv and getgenv()) or _G
@@ -14,6 +22,37 @@ local Toggles = env.Toggles
 local Options = env.Options
 local Players = game:GetService("Players")
 
+-- Small icon helper used by this example.
+-- Nuke UI also accepts icons directly through sections/tabs.
+local function iconForName(name)
+    local lower = string.lower(tostring(name or ""))
+
+    if lower:find("config") then
+        return "rbxassetid://6031280882"
+    elseif lower:find("setting") then
+        return "rbxassetid://6031280882"
+    elseif lower:find("menu") then
+        return "rbxassetid://6034767608"
+    elseif lower:find("theme") or lower:find("color") then
+        return "rbxassetid://6031763426"
+    elseif lower:find("save") then
+        return "rbxassetid://6034287594"
+    elseif lower:find("aim") or lower:find("target") then
+        return "rbxassetid://6035047409"
+    elseif lower:find("visual") or lower:find("esp") then
+        return "rbxassetid://6031075938"
+    elseif lower:find("world") then
+        return "rbxassetid://6034684949"
+    elseif lower:find("tab 1") or lower:match("1$") then
+        return "rbxassetid://6034287518"
+    elseif lower:find("tab 2") or lower:match("2$") then
+        return "rbxassetid://6031280882"
+    end
+
+    return "rbxassetid://6022668898"
+end
+
+-- Converts short key names into Roblox Enum values.
 local function parseKey(value)
     if typeof(value) == "EnumItem" then
         return value
@@ -38,6 +77,7 @@ local function parseKey(value)
     return Enum.KeyCode[value] or Enum.UserInputType[value] or value
 end
 
+-- Converts multi dropdown maps into sorted arrays for the UI control.
 local function normalizeMulti(value)
     if type(value) ~= "table" then
         return value
@@ -61,6 +101,7 @@ local function normalizeMulti(value)
     return list
 end
 
+-- Converts selected arrays back into map form for Options.MyDropdown.Value.
 local function toMultiMap(value)
     if type(value) ~= "table" then
         return value
@@ -77,6 +118,7 @@ local function toMultiMap(value)
     return map
 end
 
+-- Runs every callback registered with Option:OnChanged.
 local function fireChanged(option, ...)
     if not option._changed then
         return
@@ -87,6 +129,8 @@ local function fireChanged(option, ...)
     end
 end
 
+-- Option objects keep every control easy to read and update later:
+-- Options.Index.Value, Options.Index:SetValue(...), and Options.Index:OnChanged(...).
 local function makeOption(store, id, default, control)
     local option = store[id] or {}
     option.Value = option.Value == nil and default or option.Value
@@ -220,6 +264,9 @@ local function createGroup(section)
         _section = section,
     }
 
+    -- Groupbox:AddToggle
+    -- Arguments: Index, Options
+    -- Options: Text, Default, Tooltip, Callback
     function group:AddToggle(id, config)
         config = config or {}
         local option = makeOption(Toggles, id, config.Default == true)
@@ -243,6 +290,9 @@ local function createGroup(section)
         return option
     end
 
+    -- Groupbox:AddButton
+    -- Supports both AddButton("Text", callback) and AddButton({ Text = ..., Func = ... }).
+    -- Returns a small button object so you can chain :AddButton for sub buttons.
     function group:AddButton(config, callback)
         if type(config) ~= "table" then
             config = {
@@ -265,6 +315,9 @@ local function createGroup(section)
         return button
     end
 
+    -- Groupbox:AddLabel
+    -- Arguments: Text
+    -- The returned object supports :AddColorPicker and :AddKeyPicker.
     function group:AddLabel(text)
         local control = section:label({
             name = tostring(text or ""),
@@ -274,13 +327,19 @@ local function createGroup(section)
         return option
     end
 
+    -- Groupbox:AddDivider
+    -- Adds a simple spacer/divider-like label.
     function group:AddDivider()
         section:label({name = " "})
     end
 
+    -- Groupbox:AddSlider
+    -- Arguments: Index, SliderOptions
+    -- SliderOptions: Text, Default, Min, Max, Rounding, Step, Suffix, Tooltip, Callback
     function group:AddSlider(id, config)
         config = config or {}
         local rounding = tonumber(config.Rounding) or 0
+        local interval = tonumber(config.Step or config.Interval) or (rounding > 0 and (1 / (10 ^ rounding)) or 1)
         local option = makeOption(Options, id, config.Default or config.Min or 0)
 
         local control = section:slider({
@@ -289,7 +348,7 @@ local function createGroup(section)
             min = config.Min or 0,
             max = config.Max or 100,
             default = config.Default or config.Min or 0,
-            interval = rounding > 0 and (1 / (10 ^ rounding)) or 1,
+            interval = interval,
             suffix = config.Suffix or "",
             info = config.Tooltip,
             callback = function(value)
@@ -305,6 +364,9 @@ local function createGroup(section)
         return option
     end
 
+    -- Groupbox:AddInput
+    -- Arguments: Index, InputOptions
+    -- InputOptions: Text, Default, Placeholder, Tooltip, Callback
     function group:AddInput(id, config)
         config = config or {}
         local option = makeOption(Options, id, config.Default or "")
@@ -328,6 +390,9 @@ local function createGroup(section)
         return option
     end
 
+    -- Groupbox:AddDropdown
+    -- Arguments: Index, DropdownOptions
+    -- DropdownOptions: Text, Values, Default, Multi, SpecialType, Tooltip, Callback
     function group:AddDropdown(id, config)
         config = config or {}
         local values = config.Values or config.Options or {}
@@ -371,6 +436,8 @@ local function createGroup(section)
         return option
     end
 
+    -- Dependency boxes let you group controls that should appear under another control.
+    -- This sample keeps dependency setup lightweight; real logic can be added here.
     function group:AddDependencyBox()
         local depbox = createGroup(section)
 
@@ -386,6 +453,7 @@ local function createGroup(section)
     return group
 end
 
+-- Creates a small tab helper around Nuke UI pages.
 local function createTab(page)
     local tab = {
         _page = page,
@@ -405,36 +473,188 @@ local function createTab(page)
             name = name or "Groupbox",
             size = 1,
             default = true,
+            icon = iconForName(name),
         }))
     end
 
+    -- Add a groupbox on the left column.
     function tab:AddLeftGroupbox(name)
         return addGroupbox("left", name)
     end
 
+    -- Add a groupbox on the right column.
     function tab:AddRightGroupbox(name)
         return addGroupbox("right", name)
     end
 
-    function tab:AddLeftTabbox()
-        return {
-            AddTab = function(_, name)
-                return addGroupbox("left", name)
-            end,
+    -- Tabboxes are groupboxes with their own small tab selector inside.
+    local function addTabbox(side, name)
+        local section = getColumn(side):section({
+            name = name or "Tabbox",
+            size = 1,
+            default = true,
+            icon = iconForName(name),
+        })
+
+        local root = section.items.elements
+        local header = section.items.button
+        if section.items.section_title then
+            section.items.section_title.Visible = false
+        end
+        if section.items.Icon then
+            section.items.Icon.Visible = false
+        end
+
+        local tabbox = {
+            Tabs = {},
+            Selected = nil,
         }
+
+        local buttons = Nuke:create("Frame", {
+            Parent = header,
+            Name = "\0",
+            Position = UDim2.new(0, 0, 0, 0),
+            Size = UDim2.new(1, 0, 1, 0),
+            BackgroundTransparency = 1,
+            BackgroundColor3 = Color3.fromRGB(24, 19, 19),
+            BorderSizePixel = 0,
+            ZIndex = 20,
+        })
+
+        Nuke:create("UIListLayout", {
+            Parent = buttons,
+            FillDirection = Enum.FillDirection.Horizontal,
+            SortOrder = Enum.SortOrder.LayoutOrder,
+        })
+
+        local function resizeButtons()
+            local count = #tabbox.Tabs
+            if count == 0 then
+                return
+            end
+
+            for _, tabData in ipairs(tabbox.Tabs) do
+                tabData.Button.Size = UDim2.new(1 / count, 0, 1, 0)
+            end
+        end
+
+        local function selectTab(nextTab)
+            if tabbox.Selected == nextTab then
+                return
+            end
+
+            for _, tabData in ipairs(tabbox.Tabs) do
+                local selected = tabData == nextTab
+                tabData.Container.Visible = selected
+                tabData.Container.AutomaticSize = selected and Enum.AutomaticSize.Y or Enum.AutomaticSize.None
+                tabData.Container.Size = UDim2.new(1, 0, 0, 0)
+                tabData.Button.BackgroundTransparency = selected and 0.05 or 1
+                tabData.Label.TextColor3 = selected and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 150)
+                tabData.Icon.ImageColor3 = selected and Color3.fromRGB(255, 70, 70) or Color3.fromRGB(150, 150, 150)
+            end
+
+            tabbox.Selected = nextTab
+        end
+
+        function tabbox:AddTab(tabName)
+            local tabData = {}
+            local index = #self.Tabs + 1
+
+            tabData.Button = Nuke:create("TextButton", {
+                Parent = buttons,
+                Name = "\0",
+                LayoutOrder = index,
+                Size = UDim2.new(1, 0, 1, 0),
+                Text = "",
+                AutoButtonColor = false,
+                BorderSizePixel = 0,
+                BackgroundTransparency = 1,
+                BackgroundColor3 = Color3.fromRGB(34, 27, 27),
+                ZIndex = 21,
+            })
+
+            tabData.Icon = Nuke:create("ImageLabel", {
+                Parent = tabData.Button,
+                Name = "\0",
+                AnchorPoint = Vector2.new(0, 0.5),
+                Position = UDim2.new(0, 12, 0.5, 0),
+                Size = UDim2.new(0, 14, 0, 14),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                Image = iconForName(tabName),
+                ImageColor3 = Color3.fromRGB(150, 150, 150),
+                ZIndex = 22,
+            })
+
+            tabData.Label = Nuke:create("TextLabel", {
+                Parent = tabData.Button,
+                Name = "\0",
+                Position = UDim2.new(0, 32, 0, 0),
+                Size = UDim2.new(1, -38, 1, 0),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                Text = tostring(tabName or ("Tab " .. index)),
+                Font = Enum.Font.Code,
+                TextSize = 14,
+                TextColor3 = Color3.fromRGB(150, 150, 150),
+                TextXAlignment = Enum.TextXAlignment.Left,
+                ZIndex = 22,
+            })
+
+            tabData.Container = Nuke:create("Frame", {
+                Parent = root,
+                Name = "\0",
+                LayoutOrder = index,
+                Visible = false,
+                Size = UDim2.new(1, 0, 0, 0),
+                AutomaticSize = Enum.AutomaticSize.None,
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+            })
+
+            Nuke:create("UIListLayout", {
+                Parent = tabData.Container,
+                FillDirection = Enum.FillDirection.Vertical,
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Padding = UDim.new(0, 10),
+            })
+
+            table.insert(self.Tabs, tabData)
+            resizeButtons()
+
+            tabData.Button.MouseButton1Click:Connect(function()
+                selectTab(tabData)
+            end)
+
+            if not self.Selected then
+                selectTab(tabData)
+            end
+
+            local proxy = setmetatable({
+                items = {
+                    elements = tabData.Container,
+                },
+            }, getmetatable(section))
+
+            return createGroup(proxy)
+        end
+
+        return tabbox
     end
 
-    function tab:AddRightTabbox()
-        return {
-            AddTab = function(_, name)
-                return addGroupbox("right", name)
-            end,
-        }
+    function tab:AddLeftTabbox(name)
+        return addTabbox("left", name)
+    end
+
+    function tab:AddRightTabbox(name)
+        return addTabbox("right", name)
     end
 
     return tab
 end
 
+-- Public example table used below.
+-- It keeps the showcase readable while still calling Nuke UI directly.
 local Library = {
     _nuke = Nuke,
     Unloaded = false,
@@ -443,8 +663,13 @@ local Library = {
 
 function Library:CreateWindow(config)
     config = config or {}
+    local title = config.Title
+    if title == nil then
+        title = config.Name
+    end
+
     local rawWindow = Nuke:window({
-        name = config.Title or config.Name or "Ui",
+        name = title == nil and "" or tostring(title),
         size = config.Size or UDim2.new(0, 720, 0, 560),
         menuKey = Enum.KeyCode.End,
     })
@@ -473,6 +698,8 @@ function Library:CreateWindow(config)
     return window
 end
 
+-- Library:Notify
+-- Accepts either a string or { Title, Content, Time }.
 function Library:Notify(options, time)
     if type(options) ~= "table" then
         return Nuke:notify(tostring(options or ""), time)
@@ -490,10 +717,12 @@ function Library:SetKeybindFrameVisibility(visible)
     self.KeybindFrame = Nuke.KeybindFrame or Nuke.keybind_frame
 end
 
-function Library:SetWatermarkVisibility()
+function Library:SetWatermarkVisibility(visible)
+    Nuke:set_watermark_visible(visible)
 end
 
-function Library:SetWatermark()
+function Library:SetWatermark(text)
+    Nuke:set_watermark(text or (ActiveWindow and ActiveWindow.name) or "Ui")
 end
 
 function Library:OnUnload(callback)
@@ -513,6 +742,8 @@ local ThemeManager = {
     Themes = {"Red", "Graphite", "Arctic", "Ember", "Mint", "Rose"},
 }
 
+-- ThemeManager keeps preset and custom color controls in one place.
+-- It applies built-in Nuke presets and keeps the controls synced.
 function ThemeManager:SetLibrary(library)
     self.Library = library
 end
@@ -568,6 +799,8 @@ end
 function ThemeManager:ApplyToTab(tab)
     local group = tab:AddLeftGroupbox("Themes")
 
+    -- Theme preset dropdown.
+    -- Changing this also updates the color picker/slider controls below.
     group:AddDropdown("ThemeManager_ThemeList", {
         Text = "Theme list",
         Values = self.Themes,
@@ -578,6 +811,8 @@ function ThemeManager:ApplyToTab(tab)
         end,
     })
 
+    -- Individual color controls.
+    -- These update Nuke UI immediately when changed.
     group:AddLabel("Accent color"):AddColorPicker("ThemeManager_Accent", {
         Default = Color3.fromRGB(255, 70, 70),
         Callback = function(color)
@@ -620,6 +855,8 @@ function ThemeManager:ApplyToTab(tab)
         end,
     })
 
+    -- Transparency controls use percent values in the example,
+    -- then convert them back to 0.00 - 1.00 for Nuke UI.
     group:AddSlider("ThemeManager_WindowTransparency", {
         Text = "Window transparency",
         Default = 10,
@@ -666,6 +903,8 @@ local SaveManager = {
     Ignore = {},
 }
 
+-- SaveManager keeps create/load/overwrite/autoload controls in one place.
+-- It stores configs under Folder/settings when file functions are available.
 function SaveManager:SetLibrary(library)
     self.Library = library
 end
@@ -795,17 +1034,22 @@ function SaveManager:BuildConfigSection(tab)
     local group = tab:AddRightGroupbox("Configuration")
     local autoloadLabel
 
+    -- Config name textbox.
+    -- If this is empty, the selected item from the config list is used.
     group:AddInput("SaveManager_ConfigName", {
         Text = "Config name",
         Default = "",
     })
 
+    -- Existing config list.
+    -- Use Refresh list after manually adding/removing files.
     group:AddDropdown("SaveManager_ConfigList", {
         Text = "Config list",
         Values = self:RefreshConfigList(),
         Default = nil,
     })
 
+    -- Create/Load/Overwrite use the config name or selected config list item.
     group:AddButton({
         Text = "Create config",
         Func = function()
@@ -813,6 +1057,7 @@ function SaveManager:BuildConfigSection(tab)
         end,
     })
 
+    -- Stores the selected config name in autoload.txt.
     group:AddButton({
         Text = "Load config",
         Func = function()
@@ -858,11 +1103,13 @@ function SaveManager:LoadAutoloadConfig()
     end
 end
 
+-- Window setup
+-- Title, Size, and menu behavior are configured here.
 local Window = Library:CreateWindow({
     -- Set AutoShow to true if you want the menu to appear when it is created
     -- Position and Size are also valid options here, but not needed for this example
 
-    Title = "Ui",
+    Title = getUiTitle(),
     Center = true,
     AutoShow = true,
     TabPadding = 8,
@@ -873,13 +1120,22 @@ local Window = Library:CreateWindow({
 -- Passing callback functions in element parameters works, but :OnChanged is a clean way
 -- to separate UI creation from your actual script logic.
 
+-- Tabs are the main pages shown in the left sidebar.
 local Tabs = {
+    -- Creates a new tab titled Main
     Main = Window:AddTab("Main"),
+
+    -- This tab is used for menu, theme, and config controls.
     ["UI Settings"] = Window:AddTab("UI Settings"),
 }
 
+-- Groupboxes organize controls inside a tab.
+-- AddLeftGroupbox and AddRightGroupbox place the box in the left or right column.
 local LeftGroupBox = Tabs.Main:AddLeftGroupbox("Groupbox")
 
+-- Groupbox:AddToggle
+-- Arguments: Index, Options
+-- Options: Text, Default, Tooltip, Callback
 LeftGroupBox:AddToggle("MyToggle", {
     Text = "This is a toggle",
     Default = true,
@@ -889,12 +1145,18 @@ LeftGroupBox:AddToggle("MyToggle", {
     end,
 })
 
+-- Toggles is a table shared by the example.
+-- You can read the value later with Toggles.MyToggle.Value.
 Toggles.MyToggle:OnChanged(function()
     print("MyToggle changed to:", Toggles.MyToggle.Value)
 end)
 
+-- You can also change a control from code.
 Toggles.MyToggle:SetValue(false)
 
+-- Groupbox:AddButton
+-- Arguments: { Text, Func, Tooltip }
+-- AddButton returns a button object, so you can add a sub button below it.
 local MyButton = LeftGroupBox:AddButton({
     Text = "Button",
     Func = function()
@@ -903,6 +1165,7 @@ local MyButton = LeftGroupBox:AddButton({
     Tooltip = "This is the main button",
 })
 
+-- Sub buttons are useful for related actions under one main button.
 MyButton:AddButton({
     Text = "Sub button",
     Func = function()
@@ -911,10 +1174,18 @@ MyButton:AddButton({
     Tooltip = "This is the sub button",
 })
 
+-- Groupbox:AddLabel
+-- Arguments: Text
 LeftGroupBox:AddLabel("This is a label")
 LeftGroupBox:AddLabel("This is a label\n\nwhich wraps its text!")
+
+-- Groupbox:AddDivider
+-- Adds spacing between groups of controls.
 LeftGroupBox:AddDivider()
 
+-- Groupbox:AddSlider
+-- Arguments: Index, SliderOptions
+-- SliderOptions: Text, Default, Min, Max, Rounding, Suffix, Callback
 LeftGroupBox:AddSlider("MySlider", {
     Text = "This is my slider!",
     Default = 0,
@@ -926,12 +1197,16 @@ LeftGroupBox:AddSlider("MySlider", {
     end,
 })
 
+-- Options stores non-toggle controls such as sliders, dropdowns, inputs, and color pickers.
 Options.MySlider:OnChanged(function()
     print("MySlider was changed! New value:", Options.MySlider.Value)
 end)
 
 Options.MySlider:SetValue(3)
 
+-- Groupbox:AddInput
+-- Arguments: Index, InputOptions
+-- InputOptions: Text, Default, Placeholder, Tooltip, Callback
 LeftGroupBox:AddInput("MyTextbox", {
     Default = "My textbox!",
     Text = "This is a textbox",
@@ -946,6 +1221,9 @@ Options.MyTextbox:OnChanged(function()
     print("Text updated. New text:", Options.MyTextbox.Value)
 end)
 
+-- Groupbox:AddDropdown
+-- Arguments: Index, DropdownOptions
+-- DropdownOptions: Text, Values, Default, Multi, Tooltip, Callback
 LeftGroupBox:AddDropdown("MyDropdown", {
     Values = {"This", "is", "a", "dropdown"},
     Default = 1,
@@ -963,6 +1241,7 @@ end)
 
 Options.MyDropdown:SetValue("This")
 
+-- Multi dropdowns return a table of selected values.
 LeftGroupBox:AddDropdown("MyMultiDropdown", {
     Values = {"This", "is", "a", "dropdown"},
     Default = 1,
@@ -986,6 +1265,7 @@ Options.MyMultiDropdown:SetValue({
     is = true,
 })
 
+-- SpecialType = "Player" fills the dropdown with current player names.
 LeftGroupBox:AddDropdown("MyPlayerDropdown", {
     SpecialType = "Player",
     Text = "A player dropdown",
@@ -995,6 +1275,7 @@ LeftGroupBox:AddDropdown("MyPlayerDropdown", {
     end,
 })
 
+-- AddColorPicker can be chained from a label or other option object.
 LeftGroupBox:AddLabel("Color"):AddColorPicker("ColorPicker", {
     Default = Color3.new(0, 1, 0),
     Title = "Some color",
@@ -1011,6 +1292,8 @@ end)
 
 Options.ColorPicker:SetValueRGB(Color3.fromRGB(0, 255, 140))
 
+-- AddKeyPicker creates a bindable action.
+-- NoUI = false means this keybind can appear in the keybind list.
 LeftGroupBox:AddLabel("Keybind"):AddKeyPicker("KeyPicker", {
     Default = "MB2",
     Mode = "Toggle",
@@ -1034,9 +1317,12 @@ end)
 
 Options.KeyPicker:SetValue({"MB2", "Toggle"})
 
+-- A second groupbox with a longer label, useful for checking wrapping and scrolling.
 local LeftGroupBox2 = Tabs.Main:AddLeftGroupbox("Groupbox #2")
 LeftGroupBox2:AddLabel("Oh no...\nThis label spans multiple lines!\n\nScroll down to see the rest.")
 
+-- Tabboxes create small tabs inside a groupbox.
+-- Controls added to Tab1 stay inside Tab 1, and controls added to Tab2 stay inside Tab 2.
 local TabBox = Tabs.Main:AddRightTabbox()
 
 local Tab1 = TabBox:AddTab("Tab 1")
@@ -1045,9 +1331,12 @@ Tab1:AddToggle("Tab1Toggle", {Text = "Tab1 Toggle"})
 local Tab2 = TabBox:AddTab("Tab 2")
 Tab2:AddToggle("Tab2Toggle", {Text = "Tab2 Toggle"})
 
+-- Right column groupbox.
 local RightGroupbox = Tabs.Main:AddRightGroupbox("Groupbox #3")
 RightGroupbox:AddToggle("ControlToggle", {Text = "Dependency box toggle"})
 
+-- Dependency boxes can be used to place related controls under another control.
+-- This example keeps the setup simple so the layout can be inspected easily.
 local Depbox = RightGroupbox:AddDependencyBox()
 Depbox:AddToggle("DepboxToggle", {Text = "Sub-dependency box toggle"})
 
@@ -1055,6 +1344,8 @@ local SubDepbox = Depbox:AddDependencyBox()
 SubDepbox:AddSlider("DepboxSlider", {Text = "Slider", Default = 50, Min = 0, Max = 100, Rounding = 0})
 SubDepbox:AddDropdown("DepboxDropdown", {Text = "Dropdown", Default = 1, Values = {"a", "b", "c"}})
 
+-- Dependency examples.
+-- In this lightweight sample, SetupDependencies is present so the layout helpers are visible.
 Depbox:SetupDependencies({
     {Toggles.ControlToggle, true},
 })
@@ -1063,51 +1354,85 @@ SubDepbox:SetupDependencies({
     {Toggles.DepboxToggle, true},
 })
 
-Library:SetWatermarkVisibility(true)
-Library:SetWatermark("Ui demo")
-Library:SetKeybindFrameVisibility(true)
-Library:Notify({Title = "Nuke", Content = "Example UI loaded", Time = 1.8})
+-- Notify shows a short message near the top-left.
+Library:Notify({Title = getUiTitle() ~= "" and getUiTitle() or "Ui", Content = "Example UI loaded", Time = 1.8})
 
+-- OnUnload lets your script clean up any connections or state when the UI unloads.
 Library:OnUnload(function()
     print("Unloaded!")
     Library.Unloaded = true
 end)
 
 -- UI Settings
+-- Menu controls: unload, menu bind, keybind list, watermark, and UI scale.
 local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu")
 
 MenuGroup:AddButton("Unload", function()
     Library:Unload()
 end)
+
+-- Menu bind controls which key toggles the whole UI.
 MenuGroup:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", {
     Default = "End",
     NoUI = true,
     Text = "Menu keybind",
 })
+
+-- Shows or hides the floating keybind list.
 MenuGroup:AddToggle("ShowKeybindList", {
-    Text = "Show keybind list",
+    Text = "Open keybind menu",
     Default = true,
     Callback = function(value)
         Library:SetKeybindFrameVisibility(value)
     end,
 })
 
+-- Shows or hides the watermark with title, FPS, and ping.
+MenuGroup:AddToggle("ShowWatermark", {
+    Text = "Watermark",
+    Default = true,
+    Callback = function(value)
+        if value then
+            Library:SetWatermark()
+        else
+            Library:SetWatermarkVisibility(false)
+        end
+    end,
+})
+
+-- UI scale is a dropdown so the menu snaps to clean preset sizes.
+MenuGroup:AddDropdown("UIScale", {
+    Text = "UI Scale",
+    Values = {"50%", "75%", "100%", "125%", "150%", "175%", "200%"},
+    Default = "100%",
+    Callback = function(value)
+        if ActiveWindow and ActiveWindow.set_ui_scale then
+            ActiveWindow.set_ui_scale((tonumber(tostring(value):match("%d+")) or 100) / 100)
+        end
+    end,
+})
+
 Library.ToggleKeybind = Options.MenuKeybind
 Nuke.ToggleKeybind = Options.MenuKeybind
 
+-- Attach this example library to the managers before building their controls.
 ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
 
+-- Keep the menu key out of saved config files.
 SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({"MenuKeybind"})
 
+-- Folders used for configs/themes in this example.
 ThemeManager:SetFolder("NukeExample")
 SaveManager:SetFolder("NukeExample")
 
+-- Build the UI Settings page.
 SaveManager:BuildConfigSection(Tabs["UI Settings"])
 ThemeManager:ApplyToTab(Tabs["UI Settings"])
 ThemeManager:SyncControls("Red")
 
+-- Load the user's autoload config if one was selected earlier.
 SaveManager:LoadAutoloadConfig()
 
 return Library
