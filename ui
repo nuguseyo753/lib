@@ -538,6 +538,7 @@
 
             local transparency = clamp(tonumber(value) or themes.preset[theme] or 0, 0, 0.65)
             themes.preset[theme] = transparency
+            library.fade_cache = {}
 
             for _, data in themes.utility[theme] do
                 local object = data.instance
@@ -545,6 +546,78 @@
 
                 if object and object.Parent then
                     library:tween(object, {[property] = clamp(transparency + (data.offset or 0), 0, 1)}, Enum.EasingStyle.Quad, 0.18)
+                end
+            end
+        end
+
+        function library:get_fade_targets(root)
+            library.fade_cache = library.fade_cache or {}
+            local cached = library.fade_cache[root]
+
+            if cached then
+                return cached
+            end
+
+            local targets = {}
+
+            local function add_target(object, property)
+                local ok, value = pcall(function()
+                    return object[property]
+                end)
+
+                if ok and type(value) == "number" then
+                    insert(targets, {
+                        object = object,
+                        property = property,
+                        value = value,
+                    })
+                end
+            end
+
+            for _, object in root:GetDescendants() do
+                if object:IsA("GuiObject") then
+                    add_target(object, "BackgroundTransparency")
+                end
+
+                if object:IsA("TextLabel") or object:IsA("TextButton") or object:IsA("TextBox") then
+                    add_target(object, "TextTransparency")
+                    add_target(object, "TextStrokeTransparency")
+                end
+
+                if object:IsA("ImageLabel") or object:IsA("ImageButton") then
+                    add_target(object, "ImageTransparency")
+                end
+
+                if object:IsA("ScrollingFrame") then
+                    add_target(object, "ScrollBarImageTransparency")
+                end
+
+                if object:IsA("UIStroke") then
+                    add_target(object, "Transparency")
+                end
+            end
+
+            library.fade_cache[root] = targets
+            return targets
+        end
+
+        function library:fade_tree(root, visible, duration)
+            if not root then
+                return
+            end
+
+            local targets = library:get_fade_targets(root)
+
+            for _, target in targets do
+                local object = target.object
+                local property = target.property
+
+                if object and object.Parent then
+                    if visible then
+                        object[property] = 1
+                    end
+
+                    library:tween(object, {[property] = visible and target.value or 1}, Enum.EasingStyle.Quart, duration or 0.28)
                 end
             end
         end
@@ -1923,9 +1996,10 @@
                     items[ "main" ].BackgroundTransparency = 0.54
                     items[ "main_scale" ].Scale = cfg.ui_scale
 
+                    library:fade_tree(items[ "main" ], true, 0.3)
                     library:tween(items[ "main" ], {BackgroundTransparency = themes.preset.window_transparency}, Enum.EasingStyle.Quart, 0.24)
-                    library:tween(items[ "main" ], {Position = base_position}, Enum.EasingStyle.Quart, 0.28)
-                    task.delay(0.06, function()
+                    library:tween(items[ "main" ], {Position = base_position}, Enum.EasingStyle.Quart, 0.3)
+                    task.delay(0.08, function()
                         library:animate_visible_sections()
                     end)
                     return
@@ -1933,9 +2007,10 @@
 
                 library:close_element()
                 cfg.closed_position = items[ "main" ].Position
-                library:tween(items[ "main" ], {BackgroundTransparency = 0.54, Position = cfg.closed_position + dim2(0, 0, 0, 10)}, Enum.EasingStyle.Quart, 0.18)
+                library:fade_tree(items[ "main" ], false, 0.24)
+                library:tween(items[ "main" ], {BackgroundTransparency = 0.54, Position = cfg.closed_position + dim2(0, 0, 0, 10)}, Enum.EasingStyle.Quart, 0.24)
 
-                task.delay(0.18, function()
+                task.delay(0.24, function()
                     if not cfg.menu_open and library[ "items" ] then
                         items[ "main" ].Visible = false
                         items[ "main" ].BackgroundTransparency = themes.preset.window_transparency
@@ -1959,10 +2034,11 @@
                 if items[ "main" ] and items[ "main" ].Parent then
                     local base_position = items[ "main" ].Position
                     items[ "main" ].Position = base_position + dim2(0, 0, 0, 14)
+                    library:fade_tree(items[ "main" ], true, 0.34)
                     library:tween(items[ "main" ], {BackgroundTransparency = themes.preset.window_transparency}, Enum.EasingStyle.Quart, 0.28)
-                    library:tween(items[ "main" ], {Position = base_position}, Enum.EasingStyle.Quart, 0.32)
+                    library:tween(items[ "main" ], {Position = base_position}, Enum.EasingStyle.Quart, 0.34)
                     items[ "main_scale" ].Scale = cfg.ui_scale
-                    task.delay(0.06, function()
+                    task.delay(0.08, function()
                         library:animate_visible_sections()
                     end)
                 end
@@ -2739,9 +2815,10 @@
                 end
 
                 local base_position = cfg.motion_base_position or dim2(0, 0, 0, 0)
-                local delay_time = ((order or 1) - 1) * 0.035
+                local delay_time = ((order or 1) - 1) * 0.045
 
                 cfg.motion_base_position = base_position
+                library:fade_tree(outline, true, 0.4)
                 outline.Position = base_position + dim2(0, 0, 0, 18)
                 outline.BackgroundTransparency = 1
                 items[ "inline" ].BackgroundTransparency = 1
@@ -2752,11 +2829,11 @@
                         return
                     end
 
-                    library:tween(outline, {Position = base_position, BackgroundTransparency = clamp(themes.preset.card_transparency, 0, 1)}, Enum.EasingStyle.Quart, 0.28)
-                    library:tween(items[ "inline" ], {BackgroundTransparency = clamp(themes.preset.card_transparency + 0.04, 0, 1)}, Enum.EasingStyle.Quart, 0.28)
-                    library:tween(items[ "button" ], {BackgroundTransparency = clamp(themes.preset.card_transparency + 0.06, 0, 1)}, Enum.EasingStyle.Quart, 0.28)
+                    library:tween(outline, {Position = base_position, BackgroundTransparency = clamp(themes.preset.card_transparency, 0, 1)}, Enum.EasingStyle.Quart, 0.4)
+                    library:tween(items[ "inline" ], {BackgroundTransparency = clamp(themes.preset.card_transparency + 0.04, 0, 1)}, Enum.EasingStyle.Quart, 0.4)
+                    library:tween(items[ "button" ], {BackgroundTransparency = clamp(themes.preset.card_transparency + 0.06, 0, 1)}, Enum.EasingStyle.Quart, 0.4)
 
-                    task.delay(0.3, function()
+                    task.delay(0.42, function()
                         cfg.motion_base_position = nil
                     end)
                 end)
