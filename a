@@ -67,6 +67,7 @@
         config_flags = {},
         connections = {},   
         notifications = {notifs = {}},
+        keybinds = {},
         searchables = {},
         search_text = "",
         current_open; 
@@ -857,6 +858,187 @@
             return ins 
         end
 
+        function library:format_key(key)
+            if type(key) == "table" then
+                key = key.Key or key.key or key.Value or key.value or key[1]
+            end
+
+            if type(key) == "string" and key:upper() == "NONE" then
+                return "None"
+            end
+
+            if not key or key == "NONE" then
+                return "None"
+            end
+
+            return keys[key] or tostring(key):gsub("^Enum%.KeyCode%.", ""):gsub("^Enum%.UserInputType%.", "")
+        end
+
+        function library:create_keybind_frame()
+            if library.keybind_frame and library.keybind_frame.Parent then
+                return library.keybind_frame
+            end
+
+            if not library.items then
+                return
+            end
+
+            local frame = library:create("Frame", {
+                Parent = library.items;
+                Name = "\0";
+                Visible = false;
+                Position = dim2(0, 10, 0, 92);
+                Size = dim2(0, 248, 0, 48);
+                AutomaticSize = Enum.AutomaticSize.Y;
+                BorderSizePixel = 0;
+                BackgroundColor3 = themes.preset.surface;
+                BackgroundTransparency = 0.12;
+                ZIndex = 180;
+            })
+            library:apply_theme(frame, "surface", "BackgroundColor3")
+            library:apply_transparency(frame, "panel_transparency", "BackgroundTransparency", -0.04)
+
+            library:create("UICorner", {
+                Parent = frame;
+                CornerRadius = dim(0, 4);
+            })
+
+            local stroke = library:create("UIStroke", {
+                Parent = frame;
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
+                Color = themes.preset.border;
+                Transparency = 0.16;
+            })
+            library:apply_theme(stroke, "border", "Color")
+
+            library:create("UIListLayout", {
+                Parent = frame;
+                FillDirection = Enum.FillDirection.Vertical;
+                SortOrder = Enum.SortOrder.LayoutOrder;
+                Padding = dim(0, 1);
+            })
+
+            library:create("UIPadding", {
+                Parent = frame;
+                PaddingTop = dim(0, 5);
+                PaddingBottom = dim(0, 6);
+                PaddingLeft = dim(0, 7);
+                PaddingRight = dim(0, 7);
+            })
+
+            local title = library:create("TextLabel", {
+                Parent = frame;
+                Name = "\0";
+                BackgroundTransparency = 1;
+                BorderSizePixel = 0;
+                Size = dim2(1, 0, 0, 17);
+                FontFace = fonts.font;
+                Text = "Keybinds";
+                TextSize = 14;
+                TextColor3 = rgb(245, 245, 245);
+                TextXAlignment = Enum.TextXAlignment.Left;
+                ZIndex = 181;
+            })
+
+            local holder = library:create("Frame", {
+                Parent = frame;
+                Name = "\0";
+                BackgroundTransparency = 1;
+                BorderSizePixel = 0;
+                Size = dim2(1, 0, 0, 18);
+                AutomaticSize = Enum.AutomaticSize.Y;
+                ZIndex = 181;
+            })
+
+            library:create("UIListLayout", {
+                Parent = holder;
+                FillDirection = Enum.FillDirection.Vertical;
+                SortOrder = Enum.SortOrder.LayoutOrder;
+                Padding = dim(0, 1);
+            })
+
+            library.keybind_frame = frame
+            library.KeybindFrame = frame
+            library.keybind_holder = holder
+            library.KeybindContainer = holder
+            library:draggify(frame)
+            library:refresh_keybind_list()
+
+            return frame
+        end
+
+        function library:set_keybind_frame_visible(visible)
+            local frame = library:create_keybind_frame()
+            if frame then
+                frame.Visible = visible == true
+            end
+        end
+
+        function library:refresh_keybind_list()
+            local holder = library.keybind_holder
+            if not holder then
+                return
+            end
+
+            for _, child in holder:GetChildren() do
+                if child:IsA("GuiObject") then
+                    child:Destroy()
+                end
+            end
+
+            local count = 0
+            local width = 210
+
+            for _, bind in library.keybinds do
+                local key_text = bind and library:format_key(bind.key)
+                if bind and bind.show_in_list ~= false and key_text and key_text ~= "None" then
+                    count += 1
+
+                    local active = bind.mode == "Always" or bind.active == true
+                    local text = string.format("[%s] %s (%s)", key_text, bind.name or bind.flag or "Keybind", bind.mode or "Toggle")
+                    width = max(width, min(320, 24 + (#text * 7)))
+
+                    local label = library:create("TextLabel", {
+                        Parent = holder;
+                        Name = "\0";
+                        BackgroundTransparency = 1;
+                        BorderSizePixel = 0;
+                        Size = dim2(1, 0, 0, 17);
+                        FontFace = fonts.small;
+                        Text = text;
+                        TextSize = 13;
+                        TextTruncate = Enum.TextTruncate.AtEnd;
+                        TextColor3 = active and themes.preset.accent or rgb(225, 225, 225);
+                        TextXAlignment = Enum.TextXAlignment.Left;
+                        ZIndex = 181;
+                    })
+                    library:apply_theme(label, active and "accent" or "surface", "TextColor3")
+                end
+            end
+
+            if count == 0 then
+                library:create("TextLabel", {
+                    Parent = holder;
+                    Name = "\0";
+                    BackgroundTransparency = 1;
+                    BorderSizePixel = 0;
+                    Size = dim2(1, 0, 0, 17);
+                    FontFace = fonts.small;
+                    Text = "No keybinds";
+                    TextSize = 13;
+                    TextColor3 = rgb(145, 145, 145);
+                    TextXAlignment = Enum.TextXAlignment.Left;
+                    ZIndex = 181;
+                })
+                count = 1
+            end
+
+            holder.Size = dim2(1, 0, 0, count * 18)
+            if library.keybind_frame then
+                library:tween(library.keybind_frame, {Size = dim2(0, width, 0, 28 + count * 18)}, Enum.EasingStyle.Quart, 0.18)
+            end
+        end
+
         function library:option(options, keys, fallback)
             if not options then
                 return fallback
@@ -930,13 +1112,13 @@
                 payload = {
                     name = options.name or options.Name or options.title or options.Title or "Notification",
                     info = options.info or options.Info or options.content or options.Content or options.text or options.Text or "",
-                    lifetime = options.lifetime or options.Lifetime or options.duration or options.Duration or lifetime or 3,
+                    lifetime = options.lifetime or options.Lifetime or options.duration or options.Duration or lifetime or 2.2,
                 }
             else
                 payload = {
                     name = "Notification",
                     info = tostring(options or ""),
-                    lifetime = lifetime or 3,
+                    lifetime = lifetime or 2.2,
                 }
             end
 
@@ -1012,6 +1194,8 @@
                 BorderSizePixel = 0;
                 Size = dim2(0, 0, 0, 0);
             });
+
+            library:create_keybind_frame()
 
             local items = cfg.items; do
                 items[ "main" ] = library:create( "Frame" , {
@@ -1538,12 +1722,12 @@
                     return
                 end
 
+                library:close_element()
                 library:tween(items[ "main" ], {BackgroundTransparency = 0.46}, Enum.EasingStyle.Quart, 0.18)
                 library:tween(items[ "main_scale" ], {Scale = 0.96}, Enum.EasingStyle.Quart, 0.18)
 
                 task.delay(0.18, function()
                     if not cfg.menu_open and library[ "items" ] then
-                        library[ "items" ].Enabled = false
                         items[ "main" ].Visible = false
                         items[ "main" ].BackgroundTransparency = themes.preset.window_transparency
                         items[ "main_scale" ].Scale = 1
@@ -1889,9 +2073,9 @@
                         selected_tab[ 4 ].Size = dim2(1, -160, 1, -76)
                     end
 
-                    library:tween(selected_tab[ 1 ], {BackgroundTransparency = 1})
+                    library:tween(selected_tab[ 1 ], {BackgroundTransparency = 1, Size = dim2(1, 0, 0, 38)}, Enum.EasingStyle.Quart, 0.22)
                     library:tween(selected_tab[ 2 ], {ImageColor3 = rgb(120, 120, 120)})
-                    library:tween(selected_tab[ 3 ], {TextColor3 = rgb(130, 130, 130)})
+                    library:tween(selected_tab[ 3 ], {TextColor3 = rgb(130, 130, 130), TextSize = 14, Position = dim2(0, 10, 0, 0)}, Enum.EasingStyle.Quart, 0.22)
                     if selected_tab[ 6 ] then
                         library:tween(selected_tab[ 6 ], {BackgroundTransparency = 1})
                         library:tween(selected_tab[ 6 ], {Size = dim2(0, 2, 0, 0)}, Enum.EasingStyle.Quart, 0.28)
@@ -1903,9 +2087,9 @@
                     selected_tab[ 5 ].Parent = library[ "cache" ]
                 end
 
-                library:tween(items[ "button" ], {BackgroundTransparency = 0.15})
+                library:tween(items[ "button" ], {BackgroundTransparency = 0.15, Size = dim2(1, 0, 0, 42)}, Enum.EasingStyle.Back, 0.28)
                 library:tween(items[ "icon" ], {ImageColor3 = rgb(255, 255, 255)})
-                library:tween(items[ "name" ], {TextColor3 = rgb(255, 255, 255)})
+                library:tween(items[ "name" ], {TextColor3 = rgb(255, 255, 255), TextSize = 15, Position = dim2(0, 14, 0, 0)}, Enum.EasingStyle.Quart, 0.24)
                 library:tween(items[ "active_line" ], {BackgroundTransparency = 0, Size = dim2(0, 2, 1, -12)}, Enum.EasingStyle.Quart, 0.32)
                 items[ "tab_holder" ].Position = dim2(0, 148, 0, 56)
                 library:tween(items[ "tab_holder" ], {Size = dim2(1, -140, 1, -56), Position = dim2(0, 140, 0, 56)}, Enum.EasingStyle.Quart, 0.34)
@@ -3920,6 +4104,7 @@
             local default = library:option(options, {"default", "Default"}, nil)
             local key = library:option(options, {"key", "Key"}, nil)
             local active = library:option(options, {"active", "Active"}, nil)
+            local no_ui = library:option(options, {"no_ui", "NoUI"}, false)
 
             if key == nil and default ~= nil and type(default) ~= "boolean" then
                 key = default
@@ -3936,6 +4121,7 @@
                 info = library:option(options, {"info", "Info", "description", "Description"}, nil),
                 ignore_key = library:option(options, {"ignore", "Ignore"}, false), 
                 target = library:option(options, {"target", "Target", "window", "Window", "menu_window", "MenuWindow"}, nil),
+                show_in_list = library:option(options, {"show_in_list", "ShowInList", "keybind_list", "KeybindList"}, not no_ui),
 
                 key = key, 
                 mode = library:option(options, {"mode", "Mode"}, "Toggle"),
@@ -3954,6 +4140,11 @@
                 key = cfg.key, 
                 active = cfg.active
             }
+
+            if cfg.show_in_list and cfg.flag ~= "menu_bind" and cfg.flag ~= "MenuKeybind" then
+                insert(library.keybinds, cfg)
+                library:refresh_keybind_list()
+            end
 
             local items = cfg.items; do 
 
@@ -4211,6 +4402,7 @@
                     menu_target.set_menu_key(cfg.key)
                 end
 
+                library:refresh_keybind_list()
                 library:safe_callback(cfg.callback, cfg.active)
             end
 
@@ -4663,6 +4855,9 @@
                     window.set_menu_key(bind.key)
                 end
             end, default = false})
+            menu_section:toggle({name = "Keybind list", info = "Shows the floating keybind list.", flag = "keybind_list_visible", default = false, callback = function(value)
+                library:set_keybind_frame_visible(value)
+            end})
 
             config_section:textbox({name = "Config name", flag = "config_name_text"})
             config_section:button({name = "Create Config", callback = function()
@@ -4778,12 +4973,16 @@
         end
 
         function notifications:refresh_notifs() 
-            local offset = 50
+            local offset = 12
 
             for i, v in notifications.notifs do
-                local Position = vec2(20, offset)
-                library:tween(v, {Position = dim_offset(Position.X, Position.Y)}, Enum.EasingStyle.Quad, 0.4)
-                offset += (v.AbsoluteSize.Y + 10)
+                if v and v.Parent then
+                    local Position = vec2(12, offset)
+                    library:tween(v, {Position = dim_offset(Position.X, Position.Y)}, Enum.EasingStyle.Quart, 0.18)
+                    offset += (v.AbsoluteSize.Y + 6)
+                else
+                    notifications.notifs[i] = nil
+                end
             end
 
             return offset
@@ -4792,21 +4991,26 @@
         function notifications:fade(path, is_fading)
             local fading = is_fading and 1 or 0 
             
-            library:tween(path, {BackgroundTransparency = fading}, Enum.EasingStyle.Quad, 1)
+            library:tween(path, {BackgroundTransparency = is_fading and 1 or 0.1}, Enum.EasingStyle.Quad, 0.16)
 
             for _, instance in path:GetDescendants() do 
                 if not instance:IsA("GuiObject") then 
                     if instance:IsA("UIStroke") then
-                        library:tween(instance, {Transparency = fading}, Enum.EasingStyle.Quad, 1)
+                        library:tween(instance, {Transparency = is_fading and 1 or 0.18}, Enum.EasingStyle.Quad, 0.16)
                     end
         
                     continue
                 end 
         
                 if instance:IsA("TextLabel") then
-                    library:tween(instance, {TextTransparency = fading})
+                    library:tween(instance, {TextTransparency = fading}, Enum.EasingStyle.Quad, 0.16)
                 elseif instance:IsA("Frame") then
-                    library:tween(instance, {BackgroundTransparency = instance.Transparency and 0.6 and is_fading and 1 or 0.6}, Enum.EasingStyle.Quad, 1)
+                    local target = is_fading and 1 or instance.BackgroundTransparency
+                    if not is_fading and target >= 1 then
+                        target = 0.18
+                    end
+
+                    library:tween(instance, {BackgroundTransparency = target}, Enum.EasingStyle.Quad, 0.16)
                 end
             end
         end 
@@ -4815,7 +5019,7 @@
             local cfg = {
                 name = options.name or "This is a title!";
                 info = options.info or "This is extra info!";
-                lifetime = options.lifetime or 3;
+                lifetime = options.lifetime or 2.2;
                 items = {};
                 outline;
             }
@@ -4823,22 +5027,24 @@
             local items = cfg.items; do 
                 items[ "notification" ] = library:create( "Frame" , {
                     Parent = library[ "items" ];
-                    Size = dim2(0, 210, 0, 53);
+                    Size = dim2(0, 236, 0, 52);
                     Name = "\0";
                     BorderColor3 = rgb(0, 0, 0);
                     BorderSizePixel = 0;
                     BackgroundTransparency = 1;
-                    AnchorPoint = vec2(1, 0);
+                    AnchorPoint = vec2(0, 0);
                     AutomaticSize = Enum.AutomaticSize.Y;
-                    BackgroundColor3 = rgb(14, 14, 14)
-                });
+                    Position = dim_offset(-260, 12);
+                    BackgroundColor3 = themes.preset.surface;
+                    ZIndex = 190;
+                }); library:apply_theme(items[ "notification" ], "surface", "BackgroundColor3")
                 
-                library:create( "UIStroke" , {
-                    Color = rgb(48, 48, 48);
+                items[ "stroke" ] = library:create( "UIStroke" , {
+                    Color = themes.preset.border;
                     Parent = items[ "notification" ];
                     Transparency = 1;
                     ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-                });
+                }); library:apply_theme(items[ "stroke" ], "border", "Color")
                 
                 items[ "title" ] = library:create( "TextLabel" , {
                     FontFace = fonts.font;
@@ -4850,9 +5056,12 @@
                     BackgroundTransparency = 1;
                     Position = dim2(0, 7, 0, 6);
                     BorderSizePixel = 0;
-                    AutomaticSize = Enum.AutomaticSize.XY;
+                    Size = dim2(1, -14, 0, 0);
+                    AutomaticSize = Enum.AutomaticSize.Y;
+                    TextXAlignment = Enum.TextXAlignment.Left;
                     TextSize = 14;
-                    BackgroundColor3 = rgb(255, 255, 255)
+                    BackgroundColor3 = rgb(255, 255, 255);
+                    ZIndex = 191;
                 });
                 
                 library:create( "UICorner" , {
@@ -4872,9 +5081,11 @@
                     BackgroundTransparency = 1;
                     TextXAlignment = Enum.TextXAlignment.Left;
                     TextWrapped = true;
-                    AutomaticSize = Enum.AutomaticSize.XY;
+                    Size = dim2(1, -18, 0, 0);
+                    AutomaticSize = Enum.AutomaticSize.Y;
                     TextSize = 14;
-                    BackgroundColor3 = rgb(255, 255, 255)
+                    BackgroundColor3 = rgb(255, 255, 255);
+                    ZIndex = 191;
                 });
                 
                 library:create( "UIPadding" , {
@@ -4889,10 +5100,11 @@
                     Name = "\0";
                     Position = dim2(0, 8, 1, -6);
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(0, 0, 0, 5);
-                    BackgroundTransparency = 1;
+                    Size = dim2(0, 0, 0, 3);
+                    BackgroundTransparency = 0.08;
                     BorderSizePixel = 0;
-                    BackgroundColor3 = themes.preset.accent
+                    BackgroundColor3 = themes.preset.accent;
+                    ZIndex = 191;
                 });
                 
                 library:create( "UICorner" , {
@@ -4909,25 +5121,30 @@
             local index = #notifications.notifs + 1
             notifications.notifs[index] = items[ "notification" ]
 
-            notifications:fade(items[ "notification" ], false)
-            
             local offset = notifications:refresh_notifs()
 
-            items[ "notification" ].Position = dim_offset(20, offset)
+            items[ "notification" ].Position = dim_offset(-260, offset)
 
-            library:tween(items[ "notification" ], {AnchorPoint = vec2(0, 0)}, Enum.EasingStyle.Quad, 1)
-            library:tween(items[ "bar" ], {Size = dim2(1, -8, 0, 5)}, Enum.EasingStyle.Quad, cfg.lifetime)
+            notifications:fade(items[ "notification" ], false)
+            library:tween(items[ "notification" ], {Position = dim_offset(12, offset)}, Enum.EasingStyle.Quart, 0.2)
+            library:tween(items[ "bar" ], {Size = dim2(1, -8, 0, 3)}, Enum.EasingStyle.Linear, cfg.lifetime)
 
             task.spawn(function()
                 task.wait(cfg.lifetime)
                 
-                notifications.notifs[index] = nil
+                for i, notification in notifications.notifs do
+                    if notification == items[ "notification" ] then
+                        remove(notifications.notifs, i)
+                        break
+                    end
+                end
                 
                 notifications:fade(items[ "notification" ], true)
+                library:tween(items[ "notification" ], {Position = dim_offset(-260, items[ "notification" ].Position.Y.Offset)}, Enum.EasingStyle.Quart, 0.2)
                 
-                library:tween(items[ "notification" ], {AnchorPoint = vec2(1, 0)}, Enum.EasingStyle.Quad, 1)
+                notifications:refresh_notifs()
 
-                task.wait(1)
+                task.wait(0.22)
         
                 items[ "notification" ]:Destroy() 
             end)
@@ -5848,6 +6065,9 @@ library.UpdateCardTransparency = library.update_card_transparency
 library.GetThemeConfig = library.get_theme_config
 library.LoadThemeConfig = library.load_theme_config
 library.SetSearch = library.set_search
+library.SetKeybindFrameVisibility = library.set_keybind_frame_visible
+library.ShowKeybinds = library.set_keybind_frame_visible
+library.RefreshKeybindList = library.refresh_keybind_list
 library.EspPreview = library.esp_preview
 library.ESPPreview = library.esp_preview
 
