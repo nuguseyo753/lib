@@ -687,9 +687,9 @@
             library.searchables = library.searchables or {}
             path.search_text = library:normalize_search_text(text)
 
-            local outline = path.items and path.items[ "outline" ]
-            if typeof(outline) == "Instance" and outline:IsA("GuiObject") then
-                path.search_size = outline.Size
+            local target = path.items and (path.items[ "motion_holder" ] or path.items[ "outline" ])
+            if typeof(target) == "Instance" and target:IsA("GuiObject") then
+                path.search_size = target.Size
             end
 
             insert(library.searchables, path)
@@ -720,10 +720,11 @@
             end
 
             for _, path in library.searchables or {} do
+                local target = path.items and (path.items[ "motion_holder" ] or path.items[ "outline" ])
                 local outline = path.items and path.items[ "outline" ]
 
-                if typeof(outline) == "Instance" and outline:IsA("GuiObject") then
-                    path.search_size = path.search_size or outline.Size
+                if typeof(target) == "Instance" and target:IsA("GuiObject") then
+                    path.search_size = path.search_size or target.Size
 
                     local text = path.search_text or ""
                     local visible = true
@@ -735,8 +736,12 @@
                         end
                     end
 
-                    outline.Visible = visible
-                    outline.Size = visible and path.search_size or dim2(0, 0, 0, 0)
+                    target.Visible = visible
+                    target.Size = visible and path.search_size or dim2(1, 0, 0, 0)
+
+                    if typeof(outline) == "Instance" and outline:IsA("GuiObject") then
+                        outline.Visible = visible
+                    end
                 end
             end
         end
@@ -971,8 +976,13 @@
 
         function library:set_keybind_frame_visible(visible)
             local frame = library:create_keybind_frame()
+            visible = visible == true
+            library.keybind_frame_visible = visible
+            flags["keybind_list_visible"] = visible
+            flags["ShowKeybindList"] = visible
+
             if frame then
-                frame.Visible = visible == true
+                frame.Visible = visible
             end
         end
 
@@ -1113,16 +1123,20 @@
                 })
             end
 
-            local label = create_segment(library.watermark_title or "Ui", rgb(245, 245, 245))
+            local default_title = tostring(library.watermark_title or (library.current_window and library.current_window.name) or "")
+            local label = create_segment(default_title, rgb(245, 245, 245))
             local sep1 = create_segment("|", rgb(110, 110, 110))
             local fps_label = create_segment("0fps", themes.preset.accent)
             local sep2 = create_segment("|", rgb(110, 110, 110))
             local ping_label = create_segment("0ms", rgb(210, 210, 210))
             library:apply_theme(fps_label, "accent", "TextColor3")
+            label.Visible = default_title ~= ""
+            sep1.Visible = default_title ~= ""
 
             library.watermark_frame = frame
             library.Watermark = frame
             library.watermark_label = label
+            library.watermark_sep1 = sep1
             library.watermark_fps_label = fps_label
             library.watermark_ping_label = ping_label
             library.WatermarkText = label
@@ -1182,16 +1196,36 @@
             end
 
             local current_window = library.current_window
-            library.watermark_title = tostring(text or (current_window and current_window.name) or "Ui")
+            library.watermark_title = tostring(text or (current_window and current_window.name) or "")
             library.watermark_label.Text = library.watermark_title
+            library.watermark_label.Visible = library.watermark_title ~= ""
+            if library.watermark_sep1 then
+                library.watermark_sep1.Visible = library.watermark_title ~= ""
+            end
+            flags["watermark_visible"] = true
+            flags["ShowWatermark"] = true
             frame.Visible = true
             return frame
         end
 
         function library:set_watermark_visible(visible)
             local frame = library:create_watermark()
+            visible = visible == true
+            flags["watermark_visible"] = visible
+            flags["ShowWatermark"] = visible
+
+            if visible and library.watermark_label then
+                local current_window = library.current_window
+                library.watermark_title = tostring(library.watermark_title or (current_window and current_window.name) or "")
+                library.watermark_label.Text = library.watermark_title
+                library.watermark_label.Visible = library.watermark_title ~= ""
+                if library.watermark_sep1 then
+                    library.watermark_sep1.Visible = library.watermark_title ~= ""
+                end
+            end
+
             if frame then
-                frame.Visible = visible == true
+                frame.Visible = visible
             end
         end
 
@@ -1326,7 +1360,7 @@
 
             local cfg = { 
                 suffix = properties.suffix or properties.Suffix or "";
-                name = properties.name or properties.Name or properties.title or properties.Title or properties.window_name or properties.WindowName or "Nuke";
+                name = tostring(properties.name or properties.Name or properties.title or properties.Title or properties.window_name or properties.WindowName or "");
                 game_name = properties.gameInfo or properties.game_info or properties.GameInfo or "";
                 size = properties.size or properties.Size or dim2(0, 700, 0, 565);
                 menu_key = properties.menuKey or properties.menu_key or properties.MenuKey or Enum.KeyCode.Insert;
@@ -1469,9 +1503,9 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Parent = items[ "side_frame" ];
                     Name = "\0";
-                    Text = cfg.name .. cfg.suffix;
+                    Text = cfg.name ~= "" and (cfg.name .. cfg.suffix) or "";
                     BackgroundTransparency = 1;
-                    Visible = true;
+                    Visible = cfg.name ~= "";
                     Position = dim2(0, 24, 0, 6);
                     Size = dim2(1, -28, 0, 48);
                     TextColor3 = rgb(245, 245, 245);
@@ -1859,12 +1893,17 @@
                 end
 
                 if items[ "title" ] then
-                    items[ "title" ].Text = cfg.name .. cfg.suffix
+                    items[ "title" ].Text = cfg.name ~= "" and (cfg.name .. cfg.suffix) or ""
+                    items[ "title" ].Visible = cfg.name ~= ""
                 end
 
                 if library.watermark_frame and library.watermark_frame.Visible and library.watermark_label then
                     library.watermark_title = cfg.name
                     library.watermark_label.Text = library.watermark_title
+                    library.watermark_label.Visible = library.watermark_title ~= ""
+                    if library.watermark_sep1 then
+                        library.watermark_sep1.Visible = library.watermark_title ~= ""
+                    end
                 end
             end
 
@@ -1878,11 +1917,13 @@
                 if bool then
                     library[ "items" ].Enabled = true
                     items[ "main" ].Visible = true
-                    items[ "main" ].BackgroundTransparency = 0.46
-                    items[ "main_scale" ].Scale = cfg.ui_scale * 0.96
+                    local base_position = cfg.closed_position or items[ "main" ].Position
+                    items[ "main" ].Position = base_position + dim2(0, 0, 0, 14)
+                    items[ "main" ].BackgroundTransparency = 0.54
+                    items[ "main_scale" ].Scale = cfg.ui_scale
 
                     library:tween(items[ "main" ], {BackgroundTransparency = themes.preset.window_transparency}, Enum.EasingStyle.Quart, 0.24)
-                    library:tween(items[ "main_scale" ], {Scale = cfg.ui_scale}, Enum.EasingStyle.Back, 0.28)
+                    library:tween(items[ "main" ], {Position = base_position}, Enum.EasingStyle.Quart, 0.28)
                     task.delay(0.06, function()
                         library:animate_visible_sections()
                     end)
@@ -1890,14 +1931,15 @@
                 end
 
                 library:close_element()
-                library:tween(items[ "main" ], {BackgroundTransparency = 0.46}, Enum.EasingStyle.Quart, 0.18)
-                library:tween(items[ "main_scale" ], {Scale = cfg.ui_scale * 0.96}, Enum.EasingStyle.Quart, 0.18)
+                cfg.closed_position = items[ "main" ].Position
+                library:tween(items[ "main" ], {BackgroundTransparency = 0.54, Position = cfg.closed_position + dim2(0, 0, 0, 10)}, Enum.EasingStyle.Quart, 0.18)
 
                 task.delay(0.18, function()
                     if not cfg.menu_open and library[ "items" ] then
                         items[ "main" ].Visible = false
                         items[ "main" ].BackgroundTransparency = themes.preset.window_transparency
                         items[ "main_scale" ].Scale = cfg.ui_scale
+                        items[ "main" ].Position = cfg.closed_position or items[ "main" ].Position
                     end
                 end)
             end 
@@ -1914,8 +1956,11 @@
 
             task.defer(function()
                 if items[ "main" ] and items[ "main" ].Parent then
+                    local base_position = items[ "main" ].Position
+                    items[ "main" ].Position = base_position + dim2(0, 0, 0, 14)
                     library:tween(items[ "main" ], {BackgroundTransparency = themes.preset.window_transparency}, Enum.EasingStyle.Quart, 0.28)
-                    library:tween(items[ "main_scale" ], {Scale = cfg.ui_scale}, Enum.EasingStyle.Back, 0.32)
+                    library:tween(items[ "main" ], {Position = base_position}, Enum.EasingStyle.Quart, 0.32)
+                    items[ "main_scale" ].Scale = cfg.ui_scale
                     task.delay(0.06, function()
                         library:animate_visible_sections()
                     end)
@@ -2194,7 +2239,7 @@
                                 self.items[ "global_fade" ].BackgroundTransparency = 0.18
                                 library:tween(self.items[ "global_fade" ], {BackgroundTransparency = 1}, Enum.EasingStyle.Quart, 0.34)
                                 
-                                page.page.Size = dim2(1, -20, 1, -20)
+                                page.page.Position = dim2(0, 0, 0, 14)
                             end
 
                             if page then
@@ -2209,9 +2254,9 @@
                             library:tween(data.text, {TextColor3 = rgb(255, 255, 255)})
                             library:tween(data.accent, {BackgroundTransparency = 0, Size = dim2(0, 3, 0, 18)}, Enum.EasingStyle.Quart, 0.28)
                             library:tween(data.button, {BackgroundTransparency = 0})
-                            data.page.Size = dim2(1, -14, 1, -14)
-                            data.page.Position = dim2(0, 8, 0, 0)
-                            library:tween(data.page, {Size = dim2(1, 0, 1, 0), Position = dim2(0, 0, 0, 0)}, Enum.EasingStyle.Quart, 0.34)
+                            data.page.Size = dim2(1, 0, 1, 0)
+                            data.page.Position = dim2(0, 0, 0, 18)
+                            library:tween(data.page, {Position = dim2(0, 0, 0, 0)}, Enum.EasingStyle.Quart, 0.34)
 
                             data.page.Visible = true
                             data.page.Parent = items["tab_holder"]
@@ -2243,7 +2288,7 @@
                         self.items[ "global_fade" ].BackgroundTransparency = 0.18
                         
                         library:tween(self.items[ "global_fade" ], {BackgroundTransparency = 1}, Enum.EasingStyle.Quart, 0.34)
-                        selected_tab[ 4 ].Size = dim2(1, -160, 1, -76)
+                        selected_tab[ 4 ].Position = dim2(0, 140, 0, 70)
                     end
 
                     library:tween(selected_tab[ 1 ], {BackgroundTransparency = 1, Size = dim2(1, 0, 0, 38)}, Enum.EasingStyle.Quart, 0.22)
@@ -2264,8 +2309,9 @@
                 library:tween(items[ "icon" ], {ImageColor3 = rgb(255, 255, 255)})
                 library:tween(items[ "name" ], {TextColor3 = rgb(255, 255, 255), TextSize = 15, Position = dim2(0, 14, 0, 0)}, Enum.EasingStyle.Quart, 0.24)
                 library:tween(items[ "active_line" ], {BackgroundTransparency = 0, Size = dim2(0, 2, 1, -12)}, Enum.EasingStyle.Quart, 0.32)
-                items[ "tab_holder" ].Position = dim2(0, 148, 0, 56)
-                library:tween(items[ "tab_holder" ], {Size = dim2(1, -140, 1, -56), Position = dim2(0, 140, 0, 56)}, Enum.EasingStyle.Quart, 0.34)
+                items[ "tab_holder" ].Size = dim2(1, -140, 1, -56)
+                items[ "tab_holder" ].Position = dim2(0, 140, 0, 74)
+                library:tween(items[ "tab_holder" ], {Position = dim2(0, 140, 0, 56)}, Enum.EasingStyle.Quart, 0.34)
                 
                 items[ "tab_holder" ].Visible = true 
                 items[ "tab_holder" ].Parent = self.items[ "main" ]
@@ -2405,11 +2451,20 @@
             };
             
             local items = cfg.items; do 
-                items[ "outline" ] = library:create( "Frame" , {
+                items[ "motion_holder" ] = library:create( "Frame" , {
                     Name = "\0";
                     Parent = self.items[ "column" ];
+                    BackgroundTransparency = 1;
+                    BorderSizePixel = 0;
+                    Size = dim2(1, 0, 0, 42);
+                    BackgroundColor3 = rgb(255, 255, 255)
+                });
+
+                items[ "outline" ] = library:create( "Frame" , {
+                    Name = "\0";
+                    Parent = items[ "motion_holder" ];
                     BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(0, 0, 0, 42);
+                    Size = dim2(1, 0, 0, 42);
                     AutomaticSize = Enum.AutomaticSize.Y;
                     ClipsDescendants = true;
                     BorderSizePixel = 0;
@@ -2649,10 +2704,12 @@
 
                 items[ "scrolling" ].Size = dim2(1, 0, 0, body_height)
                 items[ "inline" ].Size = dim2(1, -2, 0, total_height)
-                items[ "outline" ].Size = dim2(0, 0, 0, total_height + 2)
+                local section_size = dim2(1, 0, 0, total_height + 2)
+                items[ "motion_holder" ].Size = section_size
+                items[ "outline" ].Size = section_size
 
                 if cfg.search_size then
-                    cfg.search_size = items[ "outline" ].Size
+                    cfg.search_size = section_size
                 end
             end
 
@@ -2668,7 +2725,7 @@
                     return
                 end
 
-                local base_position = cfg.motion_base_position or outline.Position
+                local base_position = cfg.motion_base_position or dim2(0, 0, 0, 0)
                 local delay_time = ((order or 1) - 1) * 0.035
 
                 cfg.motion_base_position = base_position
@@ -2732,6 +2789,10 @@
                 items = {};
                 seperator = library:option(options, {"seperator", "Seperator", "separator", "Separator"}, false);
             }
+
+            if cfg.enabled == nil then
+                cfg.enabled = cfg.default
+            end
 
             library:append_search_text(self, cfg.name)
             flags[cfg.flag] = cfg.default
@@ -2932,6 +2993,9 @@
             end;
             
             function cfg.set(bool)
+                bool = bool == true
+                cfg.enabled = bool
+
                 if cfg.type == "checkbox" then 
                     library:tween(items[ "tick" ], {Rotation = bool and 0 or 45, ImageTransparency = bool and 0 or 1})
                     library:tween(items[ "toggle_button" ], {BackgroundColor3 = bool and themes.preset.accent or rgb(67, 67, 67)})
@@ -2950,15 +3014,21 @@
                 end
             end 
             
-            items[ "toggle" ].MouseButton1Click:Connect(function()
-                cfg.enabled = not cfg.enabled 
-                cfg.set(cfg.enabled)
-            end)
+            local function toggle_clicked()
+                if cfg.toggle_debounce then
+                    return
+                end
 
-            items[ "toggle_button" ].MouseButton1Click:Connect(function()
-                cfg.enabled = not cfg.enabled 
-                cfg.set(cfg.enabled)
-            end)
+                cfg.toggle_debounce = true
+                cfg.set(not cfg.enabled)
+
+                task.delay(0.05, function()
+                    cfg.toggle_debounce = false
+                end)
+            end
+
+            items[ "toggle" ].MouseButton1Click:Connect(toggle_clicked)
+            items[ "toggle_button" ].MouseButton1Click:Connect(toggle_clicked)
             
             if cfg.seperator then
                 library:create( "Frame" , {
@@ -4958,7 +5028,7 @@
             local main = window:tab({name = "UI Settings", tabs = {"Main"}, group = "Settings"})
             
             local menu_column = main:column({size = 0.5})
-            local menu_section = menu_column:section({name = "Menu", size = 0.25, default = true, icon = "rbxassetid://6031091002"})
+            local menu_section = menu_column:section({name = "Menu", size = 0.25, default = true, icon = "rbxassetid://6034767608"})
             local theme_section = menu_column:section({name = "Themes", size = 0.65, default = true, icon = "rbxassetid://6031763426"})
 
             local config_column = main:column({size = 0.5})
