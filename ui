@@ -240,9 +240,49 @@
         }
     end
 
-        function library:tween(obj, properties, easing_style, time) 
-            local tween = tween_service:Create(obj, TweenInfo.new(time or 0.25, easing_style or Enum.EasingStyle.Quint, Enum.EasingDirection.InOut, 0, false, 0), properties):Play()
-                
+        function library:tween(obj, properties, easing_style, time)
+            library.active_tweens = library.active_tweens or setmetatable({}, {__mode = "k"})
+
+            local object_tweens = library.active_tweens[obj]
+            if not object_tweens then
+                object_tweens = {}
+                library.active_tweens[obj] = object_tweens
+            end
+
+            local tweened_properties = {}
+
+            for property in properties do
+                tweened_properties[#tweened_properties + 1] = property
+
+                local active_tween = object_tweens[property]
+                if active_tween then
+                    pcall(function()
+                        active_tween:Cancel()
+                    end)
+                end
+            end
+
+            local tween = tween_service:Create(obj, TweenInfo.new(time or 0.25, easing_style or Enum.EasingStyle.Quint, Enum.EasingDirection.InOut, 0, false, 0), properties)
+
+            for _, property in tweened_properties do
+                object_tweens[property] = tween
+            end
+
+            local connection
+            connection = tween.Completed:Connect(function()
+                for _, property in tweened_properties do
+                    if object_tweens[property] == tween then
+                        object_tweens[property] = nil
+                    end
+                end
+
+                if connection then
+                    connection:Disconnect()
+                end
+            end)
+
+            tween:Play()
+
             return tween
         end
 
@@ -646,25 +686,37 @@
                 local property = target.property
 
                 if object and object.Parent then
-                    if not visible then
-                        local ok, value = pcall(function()
-                            return object[property]
-                        end)
-
-                        if ok and type(value) == "number" and value < 0.98 then
-                            pcall(function()
-                                object:SetAttribute(library:fade_attribute_name(property), value)
-                            end)
-
-                            target.value = value
-                        end
-                    end
-
                     if visible then
                         object[property] = 1
                     end
 
                     library:tween(object, {[property] = visible and target.value or 1}, Enum.EasingStyle.Quart, duration or 0.28)
+                end
+            end
+        end
+
+        function library:set_fade_tree(root, value)
+            if not root then
+                return
+            end
+
+            local targets = library:get_fade_targets(root)
+
+            for _, target in targets do
+                local object = target.object
+                local property = target.property
+
+                if object and object.Parent then
+                    local object_tweens = library.active_tweens and library.active_tweens[object]
+                    local active_tween = object_tweens and object_tweens[property]
+                    if active_tween then
+                        pcall(function()
+                            active_tween:Cancel()
+                        end)
+                        object_tweens[property] = nil
+                    end
+
+                    object[property] = value
                 end
             end
         end
@@ -1352,6 +1404,10 @@
         end
 
         function library:animate_visible_sections()
+            if library.current_window and library.current_window.menu_open == false then
+                return
+            end
+
             local index = 0
 
             for _, section in library.sections do
@@ -2036,6 +2092,8 @@
             function cfg.toggle_menu(bool) 
                 bool = bool ~= false
                 cfg.menu_open = bool
+                cfg.fade_id = (cfg.fade_id or 0) + 1
+                local fade_id = cfg.fade_id
 
                 if bool then
                     library[ "items" ].Enabled = true
@@ -2044,12 +2102,17 @@
                     items[ "main" ].Position = base_position + dim2(0, 0, 0, 14)
                     items[ "main" ].BackgroundTransparency = 0.54
                     items[ "main_scale" ].Scale = cfg.ui_scale
+                    if items[ "global_fade" ] then
+                        library:tween(items[ "global_fade" ], {BackgroundTransparency = 1}, Enum.EasingStyle.Linear, 0.01)
+                    end
 
                     library:fade_tree(items[ "main" ], true, 0.3)
                     library:tween(items[ "main" ], {BackgroundTransparency = themes.preset.window_transparency}, Enum.EasingStyle.Quart, 0.24)
                     library:tween(items[ "main" ], {Position = base_position}, Enum.EasingStyle.Quart, 0.3)
                     task.delay(0.08, function()
-                        library:animate_visible_sections()
+                        if cfg.fade_id == fade_id and cfg.menu_open then
+                            library:animate_visible_sections()
+                        end
                     end)
                     return
                 end
@@ -2060,11 +2123,14 @@
                 library:tween(items[ "main" ], {BackgroundTransparency = 0.54, Position = cfg.closed_position + dim2(0, 0, 0, 10)}, Enum.EasingStyle.Quart, 0.24)
 
                 task.delay(0.24, function()
-                    if not cfg.menu_open and library[ "items" ] then
+                    if cfg.fade_id == fade_id and not cfg.menu_open and library[ "items" ] then
                         items[ "main" ].Visible = false
                         items[ "main" ].BackgroundTransparency = themes.preset.window_transparency
                         items[ "main_scale" ].Scale = cfg.ui_scale
                         items[ "main" ].Position = cfg.closed_position or items[ "main" ].Position
+                        if items[ "global_fade" ] then
+                            items[ "global_fade" ].BackgroundTransparency = 1
+                        end
                     end
                 end)
             end 
@@ -2080,15 +2146,22 @@
             end)
 
             task.defer(function()
-                if items[ "main" ] and items[ "main" ].Parent then
+                if items[ "main" ] and items[ "main" ].Parent and cfg.menu_open then
+                    cfg.fade_id = (cfg.fade_id or 0) + 1
+                    local fade_id = cfg.fade_id
                     local base_position = items[ "main" ].Position
                     items[ "main" ].Position = base_position + dim2(0, 0, 0, 14)
+                    if items[ "global_fade" ] then
+                        items[ "global_fade" ].BackgroundTransparency = 1
+                    end
                     library:fade_tree(items[ "main" ], true, 0.34)
                     library:tween(items[ "main" ], {BackgroundTransparency = themes.preset.window_transparency}, Enum.EasingStyle.Quart, 0.28)
                     library:tween(items[ "main" ], {Position = base_position}, Enum.EasingStyle.Quart, 0.34)
                     items[ "main_scale" ].Scale = cfg.ui_scale
                     task.delay(0.08, function()
-                        library:animate_visible_sections()
+                        if cfg.fade_id == fade_id and cfg.menu_open then
+                            library:animate_visible_sections()
+                        end
                     end)
                 end
             end)
@@ -2865,25 +2938,33 @@
 
                 local base_position = cfg.motion_base_position or dim2(0, 0, 0, 0)
                 local delay_time = ((order or 1) - 1) * 0.045
+                local current_window = library.current_window
+                local window_fade_id = current_window and current_window.fade_id
+                cfg.animate_id = (cfg.animate_id or 0) + 1
+                local animate_id = cfg.animate_id
 
                 cfg.motion_base_position = base_position
-                library:fade_tree(outline, true, 0.4)
+                library:set_fade_tree(outline, 1)
                 outline.Position = base_position + dim2(0, 0, 0, 18)
                 outline.BackgroundTransparency = 1
                 items[ "inline" ].BackgroundTransparency = 1
                 items[ "button" ].BackgroundTransparency = 1
 
                 task.delay(delay_time, function()
-                    if not outline.Parent then
+                    local active_window = library.current_window
+                    if cfg.animate_id ~= animate_id or not outline.Parent or (active_window and active_window.menu_open == false) or (active_window and window_fade_id and active_window.fade_id ~= window_fade_id) then
                         return
                     end
 
+                    library:fade_tree(outline, true, 0.4)
                     library:tween(outline, {Position = base_position, BackgroundTransparency = clamp(themes.preset.card_transparency, 0, 1)}, Enum.EasingStyle.Quart, 0.4)
                     library:tween(items[ "inline" ], {BackgroundTransparency = clamp(themes.preset.card_transparency + 0.04, 0, 1)}, Enum.EasingStyle.Quart, 0.4)
                     library:tween(items[ "button" ], {BackgroundTransparency = clamp(themes.preset.card_transparency + 0.06, 0, 1)}, Enum.EasingStyle.Quart, 0.4)
 
                     task.delay(0.42, function()
-                        cfg.motion_base_position = nil
+                        if cfg.animate_id == animate_id then
+                            cfg.motion_base_position = nil
+                        end
                     end)
                 end)
             end
