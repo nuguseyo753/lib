@@ -1,3 +1,6 @@
+-- New example script written for Nuke UI
+-- This is a UI showcase script. It does not include game features.
+
 local repo = "https://raw.githubusercontent.com/nuguseyo753/lib/refs/heads/main/"
 
 local Nuke = loadstring(game:HttpGet(repo .. "a"))()
@@ -181,6 +184,8 @@ local function makeOption(store, id, default, control)
             mode = keyOption.Mode,
             info = config.Tooltip,
             target = keyId == "MenuKeybind" and ActiveWindow or nil,
+            no_ui = config.NoUI == true,
+            show_in_list = config.NoUI ~= true,
             callback = function(active)
                 keyOption.Value = control and control.key or keyOption.Value
                 keyOption.Key = control and control.key or keyOption.Key
@@ -463,16 +468,26 @@ function Library:CreateWindow(config)
 
     self._window = rawWindow
     self.Holder = rawWindow.items and rawWindow.items.main
+    self.KeybindFrame = Nuke.KeybindFrame or Nuke.keybind_frame
 
     return window
 end
 
-function Library:Notify(options)
+function Library:Notify(options, time)
+    if type(options) ~= "table" then
+        return Nuke:notify(tostring(options or ""), time)
+    end
+
     return Nuke:notify({
         name = options.Title or options.Name or "Nuke",
         info = options.Content or options.Text or options.Info or "",
-        lifetime = options.Time or options.Duration or 3,
+        lifetime = options.Time or options.Duration or 2.2,
     })
+end
+
+function Library:SetKeybindFrameVisibility(visible)
+    Nuke:set_keybind_frame_visible(visible)
+    self.KeybindFrame = Nuke.KeybindFrame or Nuke.keybind_frame
 end
 
 function Library:SetWatermarkVisibility()
@@ -1050,7 +1065,8 @@ SubDepbox:SetupDependencies({
 
 Library:SetWatermarkVisibility(true)
 Library:SetWatermark("Ui demo")
-Library.KeybindFrame.Visible = true
+Library:SetKeybindFrameVisibility(true)
+Library:Notify({Title = "Nuke", Content = "Example UI loaded", Time = 1.8})
 
 Library:OnUnload(function()
     print("Unloaded!")
@@ -1067,6 +1083,13 @@ MenuGroup:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", {
     Default = "End",
     NoUI = true,
     Text = "Menu keybind",
+})
+MenuGroup:AddToggle("ShowKeybindList", {
+    Text = "Show keybind list",
+    Default = true,
+    Callback = function(value)
+        Library:SetKeybindFrameVisibility(value)
+    end,
 })
 
 Library.ToggleKeybind = Options.MenuKeybind
