@@ -3670,7 +3670,8 @@
                         BorderColor3 = rgb(0, 0, 0);
                         Parent = library[ "items" ];
                         Name = "\0";
-                        Visible = true;
+                        Visible = false;
+                        ClipsDescendants = true;
                         BackgroundTransparency = 1;
                         Size = dim2(0, 0, 0, 0);
                         BorderSizePixel = 0;
@@ -3747,8 +3748,11 @@
             function cfg.set_visible(bool)
                 local a = bool and cfg.y_size or 0
                 local position_y = items[ "dropdown" ].AbsolutePosition.Y + 80
+                cfg.visibility_id = (cfg.visibility_id or 0) + 1
+                local visibility_id = cfg.visibility_id
 
                 if bool then
+                    items[ "dropdown_holder" ].Visible = true
                     items[ "outline" ].CanvasPosition = vec2(0, 0)
 
                     local current_camera = ws.CurrentCamera or camera
@@ -3758,19 +3762,32 @@
 
                     if a > screen_height_limit then
                         a = screen_height_limit
-                        items[ "outline" ].ScrollingEnabled = true
-                        items[ "outline" ].ScrollBarThickness = 3
                     end
+
+                    local should_scroll = cfg.content_y_size > a
+                    items[ "outline" ].ScrollingEnabled = should_scroll
+                    items[ "outline" ].ScrollBarThickness = should_scroll and 3 or 0
 
                     if position_y + a > bottom_limit then
                         local above_y = items[ "dropdown" ].AbsolutePosition.Y + 60 - a
                         position_y = above_y >= 12 and above_y or max(12, bottom_limit - a)
                     end
+                else
+                    items[ "outline" ].ScrollingEnabled = false
+                    items[ "outline" ].ScrollBarThickness = 0
                 end
 
                 library:tween(items[ "dropdown_holder" ], {Size = dim_offset(items[ "dropdown" ].AbsoluteSize.X, a)})
 
                 items[ "dropdown_holder" ].Position = dim2(0, items[ "dropdown" ].AbsolutePosition.X, 0, position_y)
+                if not bool then
+                    task.delay(0.25, function()
+                        if cfg.visibility_id == visibility_id and not cfg.open and items[ "dropdown_holder" ] then
+                            items[ "dropdown_holder" ].Visible = false
+                        end
+                    end)
+                end
+
                 if not (self.sanity and library.current_open == self) then 
                     library:close_element(cfg)
                 end
