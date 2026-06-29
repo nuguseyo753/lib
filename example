@@ -1,3 +1,4 @@
+-- New example script written for Nuke UI
 -- This is a UI showcase script. It does not include game features.
 -- You can use this file as a quick reference for all common controls.
 
@@ -393,7 +394,7 @@ local function createGroup(section)
 
     -- Groupbox:AddDropdown
     -- Arguments: Index, DropdownOptions
-    -- DropdownOptions: Text, Values, Default, Multi, SpecialType, Tooltip, Callback
+    -- DropdownOptions: Text, Values, Default, Multi, SpecialType, MaxVisibleOptions, MaxHeight, Tooltip, Callback
     function group:AddDropdown(id, config)
         config = config or {}
         local values = config.Values or config.Options or {}
@@ -423,6 +424,8 @@ local function createGroup(section)
             options = values,
             default = default,
             multi = config.Multi == true,
+            max_visible_options = config.MaxVisibleOptions or config.VisibleOptions,
+            max_height = config.MaxHeight,
             info = config.Tooltip,
             callback = function(value)
                 option.Value = config.Multi and toMultiMap(value) or value
@@ -1224,7 +1227,7 @@ end)
 
 -- Groupbox:AddDropdown
 -- Arguments: Index, DropdownOptions
--- DropdownOptions: Text, Values, Default, Multi, Tooltip, Callback
+-- DropdownOptions: Text, Values, Default, Multi, MaxVisibleOptions, MaxHeight, Tooltip, Callback
 LeftGroupBox:AddDropdown("MyDropdown", {
     Values = {"This", "is", "a", "dropdown"},
     Default = 1,
