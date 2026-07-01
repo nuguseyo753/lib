@@ -1,4 +1,3 @@
--- New example script written for Nuke UI
 -- This is a UI showcase script. It does not include game features.
 -- You can use this file as a quick reference for all common controls.
 
@@ -260,10 +259,117 @@ local function makeOption(store, id, default, control)
     return option
 end
 
-local function createGroup(section)
+local function createGroup(section, parentGroup)
     local group = {
         _section = section,
+        _parent = parentGroup,
+        _children = {},
+        _controls = {},
+        _dependencies = nil,
+        _visible = parentGroup == nil or parentGroup._visible ~= false,
     }
+
+    if parentGroup then
+        table.insert(parentGroup._children, group)
+    end
+
+    local function readDependencyValue(source)
+        if type(source) ~= "table" then
+            return source
+        end
+
+        if source.GetState then
+            return source:GetState()
+        end
+
+        if source.Value ~= nil then
+            return source.Value
+        end
+
+        if source.Toggled ~= nil then
+            return source.Toggled
+        end
+
+        return nil
+    end
+
+    local function setControlVisible(entry, visible)
+        local control = entry
+        if type(entry) == "table" and entry._control then
+            control = entry._control
+        end
+
+        if type(control) ~= "table" then
+            return
+        end
+
+        if control.SetVisibility then
+            control:SetVisibility(visible)
+        elseif control.SetVisible then
+            control:SetVisible(visible)
+        end
+    end
+
+    function group:_dependenciesPass()
+        if not self._dependencies then
+            return true
+        end
+
+        for _, dependency in ipairs(self._dependencies) do
+            local source = dependency[1] or dependency.Option or dependency.option
+            local expected = dependency[2]
+
+            if expected == nil then
+                expected = dependency.Value
+            end
+            if expected == nil then
+                expected = dependency.value
+            end
+            if expected == nil then
+                expected = true
+            end
+
+            if readDependencyValue(source) ~= expected then
+                return false
+            end
+        end
+
+        return true
+    end
+
+    function group:_applyVisibility()
+        local parentVisible = self._parent == nil or self._parent._visible ~= false
+        self._visible = parentVisible and self:_dependenciesPass()
+
+        for _, control in ipairs(self._controls) do
+            setControlVisible(control, self._visible)
+        end
+
+        for _, child in ipairs(self._children) do
+            child:_applyVisibility()
+        end
+    end
+
+    function group:_track(control)
+        table.insert(self._controls, control)
+        setControlVisible(control, self._visible)
+        return control
+    end
+
+    function group:SetupDependencies(dependencies)
+        self._dependencies = dependencies or {}
+
+        for _, dependency in ipairs(self._dependencies) do
+            local source = dependency[1] or dependency.Option or dependency.option
+            if type(source) == "table" and source.OnChanged then
+                source:OnChanged(function()
+                    self:_applyVisibility()
+                end)
+            end
+        end
+
+        self:_applyVisibility()
+    end
 
     -- Groupbox:AddToggle
     -- Arguments: Index, Options
@@ -289,7 +395,7 @@ local function createGroup(section)
 
         option._control = control
         option._section = section
-        return option
+        return group:_track(option)
     end
 
     -- Groupbox:AddButton
@@ -304,17 +410,18 @@ local function createGroup(section)
         end
 
         local button = {}
-        section:button({
+        local control = section:button({
             name = config.Text or config.Name or "Button",
             info = config.Tooltip,
             callback = config.Func or config.Callback or function() end,
         })
+        button._control = control
 
         function button:AddButton(subConfig)
             return group:AddButton(subConfig)
         end
 
-        return button
+        return group:_track(button)
     end
 
     -- Groupbox:AddLabel
@@ -326,13 +433,14 @@ local function createGroup(section)
         })
         local option = makeOption(Options, "Label_" .. tostring(text or ""), tostring(text or ""), control)
         option._section = section
-        return option
+        return group:_track(option)
     end
 
     -- Groupbox:AddDivider
     -- Adds a simple spacer/divider-like label.
     function group:AddDivider()
-        section:label({name = " "})
+        local control = section:label({name = " "})
+        group:_track({_control = control})
     end
 
     -- Groupbox:AddSlider
@@ -363,7 +471,7 @@ local function createGroup(section)
         })
 
         option._control = control
-        return option
+        return group:_track(option)
     end
 
     -- Groupbox:AddInput
@@ -389,7 +497,7 @@ local function createGroup(section)
         })
 
         option._control = control
-        return option
+        return group:_track(option)
     end
 
     -- Groupbox:AddDropdown
@@ -437,21 +545,13 @@ local function createGroup(section)
         })
 
         option._control = control
-        return option
+        return group:_track(option)
     end
 
     -- Dependency boxes let you group controls that should appear under another control.
-    -- This sample keeps dependency setup lightweight; real logic can be added here.
+    -- SetupDependencies controls whether the nested controls are visible and clickable.
     function group:AddDependencyBox()
-        local depbox = createGroup(section)
-
-        function depbox:SetupDependencies()
-        end
-
-        return depbox
-    end
-
-    function group:SetupDependencies()
+        return createGroup(section, group)
     end
 
     return group
@@ -1340,7 +1440,7 @@ local RightGroupbox = Tabs.Main:AddRightGroupbox("Groupbox #3")
 RightGroupbox:AddToggle("ControlToggle", {Text = "Dependency box toggle"})
 
 -- Dependency boxes can be used to place related controls under another control.
--- This example keeps the setup simple so the layout can be inspected easily.
+-- Controls inside dependency boxes are hidden until their dependency matches.
 local Depbox = RightGroupbox:AddDependencyBox()
 Depbox:AddToggle("DepboxToggle", {Text = "Sub-dependency box toggle"})
 
@@ -1349,7 +1449,7 @@ SubDepbox:AddSlider("DepboxSlider", {Text = "Slider", Default = 50, Min = 0, Max
 SubDepbox:AddDropdown("DepboxDropdown", {Text = "Dropdown", Default = 1, Values = {"a", "b", "c"}})
 
 -- Dependency examples.
--- In this lightweight sample, SetupDependencies is present so the layout helpers are visible.
+-- The first box appears when ControlToggle is on; the nested box appears when DepboxToggle is on.
 Depbox:SetupDependencies({
     {Toggles.ControlToggle, true},
 })
