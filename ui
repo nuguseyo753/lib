@@ -1472,6 +1472,7 @@
                 "settings",
                 "list",
                 "outline",
+                "dropdown_holder",
             }
 
             for _, key in roots do
@@ -1479,6 +1480,11 @@
                 if typeof(item) == "Instance" and item:IsA("GuiObject") then
                     item.Visible = visible
                 end
+            end
+
+            if visible == false and self.open ~= nil and self.set_visible then
+                self.open = false
+                self.set_visible(false)
             end
         end
 
@@ -1635,7 +1641,8 @@
                     BackgroundTransparency = 0.35;
                 }); library:apply_theme(items[ "side_line" ], "border", "BackgroundColor3")
                 
-                items[ "button_holder" ] = library:create( "Frame" , {
+                items[ "button_holder" ] = library:create( "ScrollingFrame" , {
+                    Active = true;
                     Parent = items[ "side_frame" ];
                     Name = "\0";
                     BackgroundTransparency = 1;
@@ -1644,10 +1651,16 @@
                     BorderColor3 = rgb(0, 0, 0);
                     Size = dim2(1, 0, 1, -180);
                     BorderSizePixel = 0;
-                    BackgroundColor3 = rgb(255, 255, 255)
-                }); cfg.button_holder = items[ "button_holder" ];
+                    BackgroundColor3 = rgb(255, 255, 255);
+                    CanvasSize = dim2(0, 0, 0, 0);
+                    AutomaticCanvasSize = Enum.AutomaticSize.Y;
+                    ScrollingDirection = Enum.ScrollingDirection.Y;
+                    ScrollBarImageColor3 = themes.preset.accent;
+                    ScrollBarImageTransparency = 0.15;
+                    ScrollBarThickness = 0;
+                }); cfg.button_holder = items[ "button_holder" ]; library:apply_theme(items[ "button_holder" ], "accent", "ScrollBarImageColor3")
                 
-                library:create( "UIListLayout" , {
+                items[ "button_holder_layout" ] = library:create( "UIListLayout" , {
                     Parent = items[ "button_holder" ];
                     Padding = dim(0, 8);
                     SortOrder = Enum.SortOrder.LayoutOrder
@@ -1660,6 +1673,19 @@
                     PaddingRight = dim(0, 10);
                     PaddingLeft = dim(0, 8)
                 });
+
+                local function update_tab_scrollbar()
+                    if not items[ "button_holder" ] or not items[ "button_holder_layout" ] then
+                        return
+                    end
+
+                    local should_scroll = items[ "button_holder_layout" ].AbsoluteContentSize.Y > items[ "button_holder" ].AbsoluteSize.Y
+                    items[ "button_holder" ].ScrollBarThickness = should_scroll and 3 or 0
+                end
+
+                library:connection(items[ "button_holder_layout" ]:GetPropertyChangedSignal("AbsoluteContentSize"), update_tab_scrollbar)
+                library:connection(items[ "button_holder" ]:GetPropertyChangedSignal("AbsoluteSize"), update_tab_scrollbar)
+                task.defer(update_tab_scrollbar)
 
                 local accent = themes.preset.accent
                 items[ "title_accent" ] = library:create( "Frame" , {
